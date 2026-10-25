@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Линия фронта</title>
+<style>
+/* Штабной планшет: тёмные панели вокруг белой плоской карты мира, жёлтая штабная метка как акцент */
+:root{
+  --bg:#0b0f14; --panel:#11181f; --soft:#18222c; --line:#24313e; --line2:#334657;
+  --text:#dbe2e8; --muted:#8a9aab; --acc:#e3b341; --acc2:#f0cd73; --accSoft:#2a2311; --onAcc:#1a1405;
+  --red:#ef5b52; --redSoft:#3a1714; --grn:#4cc38a; --grnSoft:#14302a; --amber:#e3b341; --amberSoft:#2a2311;
+  --shadow:0 2px 6px rgba(0,0,0,.35),0 10px 30px rgba(0,0,0,.35);
+  --f-disp:"Bahnschrift","Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+  --f-body:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --f-mono:"Cascadia Mono",Consolas,ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13px/1.45 var(--f-body);overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr;grid-template-columns:420px 1fr}
+/* верхняя панель */
+#top{grid-column:1/3;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);z-index:3;flex-wrap:wrap}
+.cn{display:flex;align-items:center;gap:10px;font-family:var(--f-disp);font-size:18px;font-weight:600;min-width:0;padding-right:6px}
+#flag{width:26px;height:18px;border-radius:4px;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.st{display:flex;flex-direction:column;line-height:1.2;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:5px 11px}
+.st span{font-size:10.5px;color:var(--muted);font-weight:600}
+.st b{font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;font-weight:600}
+.grp{display:flex;gap:2px;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:3px}
+.grp button{background:none;border:0;padding:5px 9px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:12px;font-weight:600}
+.grp button.on{background:var(--acc);color:var(--onAcc)}
+.grp button:hover:not(.on){color:var(--text)}
+#speed button{font-family:var(--f-mono)}
+#fps{font:600 11px var(--f-mono);color:var(--muted);min-width:56px;text-align:right}
+#alert{font-weight:700;color:var(--red);font-size:12px;opacity:0;transition:opacity .3s;background:var(--redSoft);padding:5px 10px;border-radius:8px}
+#alert.on{opacity:1;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.45}}
+.sp{flex:1}
+/* боковая панель */
+#side{grid-row:2;grid-column:1;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);min-height:0;min-width:0;z-index:2}
+#tabs{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:10px 12px 0;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:3px}
+#tabs button{background:none;border:0;padding:7px 2px;cursor:pointer;color:var(--muted);font-size:11.5px;font-weight:600;border-radius:9px}
+#tabs button.on{background:var(--acc);color:var(--onAcc)}
+#tabs button:hover:not(.on){color:var(--text)}
+#pc{overflow:auto;padding:12px 16px 30px;flex:1;min-height:0;user-select:text}
+#pc::-webkit-scrollbar{width:10px}#pc::-webkit-scrollbar-thumb{background:#2c3a48;border-radius:10px;border:3px solid var(--panel)}
+/* карта */
+#mapwrap{position:relative;grid-row:2;grid-column:2;min-width:0;min-height:0;overflow:hidden;background:#22313f}
+#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;display:block}
+#mode{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--acc);color:var(--acc2);padding:8px 16px;border-radius:12px;font-weight:600;display:none;pointer-events:none;max-width:calc(100% - 24px);text-align:center;box-shadow:var(--shadow)}
+#tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);padding:9px 11px;border-radius:10px;font-size:12px;display:none;max-width:300px;z-index:5;box-shadow:var(--shadow)}
+#tip b{color:var(--text);font-size:13px}
+#toasts{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none;max-width:min(460px,calc(100% - 28px))}
+.toast{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--acc);padding:9px 13px;border-radius:10px;font-size:12.5px;box-shadow:var(--shadow);animation:tin .25s ease-out}
+.toast.bad{border-left-color:var(--red)}.toast.ok{border-left-color:var(--grn)}.toast.warn{border-left-color:#f59e0b}
+@keyframes tin{from{transform:translateY(8px);opacity:0}}
+#legend{position:absolute;left:14px;bottom:14px;background:rgba(17,24,31,.92);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:11.5px;color:var(--muted);line-height:1.7;pointer-events:none;box-shadow:var(--shadow)}
+#legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+#scale{position:absolute;right:14px;top:14px;font:11px var(--f-mono);color:var(--muted);background:rgba(17,24,31,.88);padding:4px 9px;border-radius:8px;pointer-events:none;border:1px solid var(--line)}
+/* элементы панели */
+h2{font-family:var(--f-disp);font-weight:600;font-size:21px;margin:0;letter-spacing:-.005em}
+h3{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:18px 0 8px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.muted{color:var(--muted)}
+.ph{display:flex;gap:12px;align-items:center;margin:4px 0 12px}
+.sw{width:12px;height:36px;border-radius:4px;flex:none}
+.card{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12.5px}
+.kv span{color:var(--muted)}
+.kv b{font-weight:600;font-family:var(--f-mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.btn{background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:6px 11px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover:not(:disabled){border-color:var(--acc);color:var(--acc2);background:var(--accSoft)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.pri{background:var(--acc);color:var(--onAcc);border-color:var(--acc)}
+.btn.pri:hover:not(:disabled){background:var(--acc2);color:var(--onAcc)}
+.btn.dng{border-color:#6b2a26;color:var(--red)}
+.btn.dng:hover:not(:disabled){background:var(--redSoft);border-color:var(--red);color:var(--red)}
+.btn:focus-visible,.grp button:focus-visible,#tabs button:focus-visible,.chip:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.row{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.row .nm{flex:1;min-width:0}
+.row .nm b{display:block;font-weight:600;font-size:12.5px}
+.row .nm small{color:var(--muted);font-size:11.5px;display:block}
+label.row{cursor:pointer}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);flex:none}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.bar{height:5px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:var(--acc);border-radius:3px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{background:var(--panel);border:1px solid var(--line2);border-radius:999px;padding:4px 11px;font-size:12px;cursor:pointer;font-weight:600;color:var(--muted)}
+.chip:hover{color:var(--text)}
+.chip.on{border-color:var(--acc);color:var(--acc);background:var(--accSoft)}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 8px;border-radius:999px;vertical-align:1px}
+.tag.war{background:var(--redSoft);color:var(--red)}.tag.peace{background:var(--grnSoft);color:var(--grn)}.tag.dead{background:#232c35;color:#8a9aab}.tag.ally{background:var(--accSoft);color:var(--acc2)}
+.hint{color:var(--muted);font-size:12px;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:8px 0}
+.log{font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line)}
+.log time{font-family:var(--f-mono);color:var(--muted);font-size:10.5px;display:block}
+.log.bad{color:#ffb4ae}.log.ok{color:#a6e9c8}.log.warn{color:#f3d58b}
+.unitbox{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--f-mono);font-size:12px;color:#c3ced8}
+input.search,select.sel{width:100%;background:var(--panel);border:1px solid var(--line2);border-radius:9px;padding:8px 11px;outline:none}
+input.search:focus,select.sel:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--accSoft)}
+.pair{display:flex;gap:6px;align-items:center;margin:6px 0}
+.pair .sel{flex:1;min-width:0}
+/* меню */
+#menu{position:fixed;inset:0;z-index:20;display:flex;pointer-events:none;padding:18px}
+#menu .in{pointer-events:auto;width:min(460px,100%);padding:22px;display:flex;flex-direction:column;gap:12px;min-height:0;background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+#menu h1{font-family:var(--f-disp);font-weight:700;font-size:38px;margin:0;letter-spacing:.01em;line-height:1}
+#menu h1 em{font-style:normal;color:var(--acc)}
+#menu .sub{color:var(--muted);margin:0}
+#natList{flex:1;min-height:120px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.nat{display:flex;gap:10px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.nat:hover{background:var(--soft)}
+.nat.on{background:var(--accSoft)}
+.nat b{flex:1;font-size:13px;font-weight:600}
+.nat small{color:var(--muted);font-family:var(--f-mono);font-size:11px}
+.nat .sw{height:14px;width:14px;border-radius:4px}
+#natInfo{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:12px}
+.opt{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.opt>span{color:var(--muted);font-size:11.5px;font-weight:600;min-width:84px}
+#over{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(2px)}
+#over .box{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;max-width:700px;width:100%;max-height:90vh;overflow:auto;box-shadow:var(--shadow)}
+#over .box h2{font-size:26px;margin-bottom:8px}
+#over .box p{color:#c3ced8;line-height:1.6}
+kbd{font-family:var(--f-mono);background:var(--soft);border:1px solid var(--line2);border-radius:5px;padding:0 5px;font-size:11px}
+#loading{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--bg);font-family:var(--f-disp);font-size:30px;font-weight:700;letter-spacing:.04em}
+#loading em{font-style:normal;color:var(--acc)}
+#loading small{font-family:var(--f-body);font-size:13px;color:var(--muted);letter-spacing:0;font-weight:400}
+@media (max-width:900px){
+  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr 45%}
+  #top{grid-column:1}
+  #mapwrap{grid-row:2;grid-column:1}
+  #side{grid-row:3;grid-column:1;border-right:0;border-top:1px solid var(--line)}
+  #legend{display:none}
+}
+@media (prefers-reduced-motion:reduce){#alert.on{animation:none}.toast{animation:none}}
+</style>
+</head>
+<body>
+<div id="loading"><div>ЛИНИЯ <em>ФРОНТА</em></div><small id="loadMsg">Строится карта мира…</small></div>
+<div id="app">
+  <header id="top">
+    <div class="cn"><span id="flag"></span><span id="cname">—</span></div>
+    <div class="st"><span>Казна</span><b id="money">—</b></div>
+    <div class="st"><span>Баланс в сутки</span><b id="inc">—</b></div>
+    <div class="st"><span>Городов</span><b id="gdp">—</b></div>
+    <div class="st"><span>Дата</span><b id="date">—</b></div>
+    <div class="grp" id="speed" title="Скорость: игровых часов в секунду (пробел — пауза)"></div>
+    <div class="grp"><button id="tgAD" class="on" title="Зоны ПВО">ПВО</button><button id="tgFog" class="on" title="Туман войны">Туман</button></div>
+    <div id="alert">Воздушная тревога</div>
+    <div class="sp"></div>
+    <span id="fps"></span>
+    <div class="grp"><button id="btnSave">Сохранить</button><button id="btnLoad">Загрузить</button><button id="btnHelp">Справка</button><button id="btnMenu">Меню</button></div>
+  </header>
+  <aside id="side">
+    <nav id="tabs">
+      <button data-tab="prov" class="on">Регион</button>
+      <button data-tab="prod">Заводы</button>
+      <button data-tab="ars">Склад</button>
+      <button data-tab="army">Армия</button>
+      <button data-tab="dip">Политика</button>
+      <button data-tab="free">Свобода</button>
+      <button data-tab="log">Журнал</button>
+    </nav>
+    <div id="pc"></div>
+  </aside>
+  <div id="mapwrap">
+    <canvas id="map"></canvas>
+    <div id="mode"></div>
+    <div id="tip"></div>
+    <div id="scale"></div>
+    <div id="legend" style="bottom:auto;top:14px"><div><i style="background:#1f6fd1"></i>ваши ракеты и БПЛА</div><div><i style="background:#d93a2f"></i>воздушные цели противника</div><div><i style="background:#e3b341"></i>зенитные ракеты</div></div>
+    <div id="toasts"></div>
+  </div>
+</div>
+
+<div id="menu"><div class="in">
+  <h1>ЛИНИЯ <em>ФРОНТА</em></h1>
+  <p class="sub">Военно-экономическая стратегия на карте реального мира. Выберите государство в списке или щёлкните по нему на карте.</p>
+  <input class="search" id="natSearch" placeholder="Поиск страны…" autocomplete="off">
+  <div id="natList"></div>
+  <div id="natInfo"></div>
+  <div class="opt"><span>Сценарий</span><div class="chips" id="scen"><span class="chip on" data-v="2026">Октябрь 2026</span><span class="chip" data-v="peace">Мирный мир</span></div></div>
+  <div class="opt"><span>Режим</span><div class="chips" id="gmode"><span class="chip on" data-v="campaign">Кампания</span><span class="chip" data-v="free">Полная свобода</span></div></div>
+  <div class="opt"><span>Сложность</span><div class="chips" id="diff"><span class="chip" data-v="0.8">Лёгкая</span><span class="chip on" data-v="1">Обычная</span><span class="chip" data-v="1.25">Тяжёлая</span></div></div>
+  <div class="opt"><button class="btn pri" id="start" style="padding:10px 22px;font-size:14px">Принять командование</button><button class="btn" id="menuLoad">Загрузить игру</button></div>
+</div></div>
+
+<div id="over"><div class="box" id="overBox"></div></div>
+
+<script src="config.js"></script>
+<script src="realdata.js"></script>
+<script src="world.js"></script>
+<script src="game.js"></script>
+<script src="features.js"></script>
+<script src="features2.js"></script>
+<script src="units.js"></script>
+<script src="mp.js"></script>
+</body>
+</html>

@@ -1,0 +1,957 @@
+<title>Линия фронта</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Штабной планшет: тёмная оперативная карта слева-направо, панель управления сбоку, жёлтая «штабная» метка как акцент */
+:root{
+  --bg:#0b0f13; --panel:#10171e; --panel2:#15202a; --line:#22303d; --line2:#2e4152;
+  --text:#d5dde4; --muted:#7f92a3; --acc:#e3b341; --acc2:#f0cd73;
+  --red:#e5534b; --grn:#4cc38a; --blu:#5aa9ff;
+  --f-disp:"Russo One","Segoe UI",system-ui,sans-serif;
+  --f-body:"Golos Text","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",Consolas,ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13px/1.4 var(--f-body);overflow:hidden}
+button{font:inherit;color:inherit}
+#app{position:fixed;inset:0;display:grid;grid-template-rows:auto 1fr;grid-template-columns:390px 1fr;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+#top{grid-column:1/3;display:flex;align-items:center;gap:16px;padding:6px 14px;background:var(--panel);border-bottom:1px solid var(--line);min-height:50px;flex-wrap:wrap}
+.cn{display:flex;align-items:center;gap:8px;font-family:var(--f-disp);font-size:15px;letter-spacing:.02em;min-width:0}
+#flag{width:22px;height:15px;border:1px solid #0008;border-radius:2px;flex:none}
+.st{display:flex;flex-direction:column;line-height:1.1}
+.st span{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.st b{font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums;font-weight:600}
+.grp{display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:2px}
+.grp button{background:none;border:0;padding:4px 8px;border-radius:4px;cursor:pointer;color:var(--muted);font-family:var(--f-mono);font-size:12px}
+.grp button.on{background:var(--acc);color:#1a1405;font-weight:600}
+.grp button:hover:not(.on){color:var(--text);background:var(--panel2)}
+#alert{font-weight:700;color:var(--red);letter-spacing:.05em;text-transform:uppercase;font-size:12px;opacity:0;transition:opacity .3s}
+#alert.on{opacity:1;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.35}}
+.sp{flex:1}
+#side{grid-row:2;grid-column:1;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);min-height:0;min-width:0}
+#tabs{display:grid;grid-template-columns:repeat(6,1fr);border-bottom:1px solid var(--line)}
+#tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 2px 7px;cursor:pointer;color:var(--muted);font-size:11.5px;font-weight:600}
+#tabs button.on{color:var(--acc);border-bottom-color:var(--acc)}
+#tabs button:hover{color:var(--text)}
+#pc{overflow:auto;padding:12px 14px 30px;flex:1;min-height:0}
+#mapwrap{position:relative;grid-row:2;grid-column:2;min-width:0;min-height:0;overflow:hidden;background:#071722}
+#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab;display:block}
+#mode{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#000c;border:1px solid var(--acc);color:var(--acc2);padding:7px 14px;border-radius:6px;font-weight:600;display:none;pointer-events:none;max-width:calc(100% - 20px);text-align:center}
+#tip{position:absolute;pointer-events:none;background:#0a0f14ee;border:1px solid var(--line2);padding:7px 9px;border-radius:5px;font-size:12px;display:none;max-width:260px;z-index:5}
+#tip b{color:var(--acc2)}
+#toasts{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:6px;align-items:flex-end;pointer-events:none;max-width:min(420px,calc(100% - 24px))}
+.toast{background:#0b1117f2;border:1px solid var(--line2);border-left:3px solid var(--blu);padding:8px 11px;border-radius:4px;font-size:12.5px;animation:tin .25s ease-out}
+.toast.bad{border-left-color:var(--red)}.toast.ok{border-left-color:var(--grn)}.toast.warn{border-left-color:var(--acc)}
+@keyframes tin{from{transform:translateY(8px);opacity:0}}
+#legend{position:absolute;left:10px;bottom:10px;background:#0a0f14d9;border:1px solid var(--line);border-radius:5px;padding:6px 9px;font-size:11px;color:var(--muted);line-height:1.6;pointer-events:none}
+#legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+h2{font-family:var(--f-disp);font-weight:400;font-size:18px;margin:0;letter-spacing:.01em;text-wrap:balance}
+h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:16px 0 7px;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.muted{color:var(--muted)}
+.ph{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.sw{width:14px;height:34px;border-radius:2px;flex:none}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px}
+.kv span{color:var(--muted)}
+.kv b{font-weight:600;font-family:var(--f-mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.btn{background:var(--panel2);border:1px solid var(--line2);border-radius:4px;padding:5px 9px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--acc);color:var(--acc2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.pri{background:var(--acc);color:#1a1405;border-color:var(--acc)}
+.btn.pri:hover:not(:disabled){background:var(--acc2);color:#1a1405}
+.btn.dng{border-color:#7a2d2a;color:#ff8a82}
+.btn.dng:hover:not(:disabled){background:#3a1513;color:#ffb0aa;border-color:var(--red)}
+.btn:focus-visible,.grp button:focus-visible,#tabs button:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
+.row{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line)}
+.row .nm{flex:1;min-width:0}
+.row .nm b{display:block;font-weight:600;font-size:12.5px}
+.row .nm small{color:var(--muted);font-size:11px;display:block}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--acc)}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{background:var(--bg);border:1px solid var(--line2);border-radius:3px;padding:3px 7px;font-size:11.5px;cursor:pointer;font-family:var(--f-mono)}
+.chip.on{border-color:var(--acc);color:var(--acc2);background:#2a2210}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:3px}
+.tag.war{background:#4a1714;color:#ff9a92}.tag.peace{background:#17322a;color:#7fe0b2}.tag.dead{background:#2a2f35;color:#9aa6b1}
+.hint{color:var(--muted);font-size:12px;background:var(--bg);border:1px dashed var(--line2);border-radius:5px;padding:9px 10px;margin:8px 0}
+.log{font-size:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.log time{font-family:var(--f-mono);color:var(--muted);font-size:10.5px;margin-right:6px}
+.log.bad{color:#ffb4ae}.log.ok{color:#a6e9c8}.log.warn{color:#f3d58b}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.unitbox{display:flex;gap:10px;flex-wrap:wrap;font-family:var(--f-mono);font-size:12px}
+/* Меню */
+#menu{pointer-events:none;position:fixed;inset:0;z-index:20;display:flex;align-items:stretch;justify-content:flex-start;background:linear-gradient(90deg,#070b0fee 0,#070b0fd0 560px,#070b0f40 100%);overflow:auto}
+#menu .in{pointer-events:auto;width:min(560px,100%);padding:28px max(16px,env(safe-area-inset-right,0px)) 28px max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+#menu h1{font-family:var(--f-disp);font-weight:400;font-size:40px;margin:0;letter-spacing:.02em;line-height:1}
+#menu h1 em{font-style:normal;color:var(--acc)}
+#menu .sub{color:var(--muted);max-width:60ch;margin:0}
+.nations{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.nat{background:#0f161dcc;border:1px solid var(--line);border-radius:6px;padding:9px 10px;cursor:pointer;text-align:left;display:flex;gap:9px;align-items:flex-start}
+.nat:hover{border-color:var(--line2)}
+.nat.on{border-color:var(--acc);background:#211b0ccc}
+.nat .sw{height:30px;width:10px}
+.nat b{display:block;font-size:13px}
+.nat small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.opt{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.opt>span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em;min-width:90px}
+#over{position:fixed;inset:0;z-index:30;background:#000b;display:none;align-items:center;justify-content:center;padding:16px}
+#over .box{background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:22px;max-width:640px;width:100%;max-height:90vh;overflow:auto}
+#over .box h2{font-size:26px;margin-bottom:8px}
+#over .box p,#over .box li{color:#c3cdd6;line-height:1.55}
+#over .box ul{padding-left:18px}
+kbd{font-family:var(--f-mono);background:var(--bg);border:1px solid var(--line2);border-radius:3px;padding:0 4px;font-size:11px}
+@media (max-width:860px){
+  #app{grid-template-columns:1fr;grid-template-rows:auto 1fr 44%}
+  #top{grid-column:1;gap:10px;padding:6px max(10px,env(safe-area-inset-left,0px))}
+  #mapwrap{grid-row:2;grid-column:1}
+  #side{grid-row:3;grid-column:1;border-right:0;border-top:1px solid var(--line)}
+  .nations{grid-template-columns:1fr}
+  #menu{background:#070b0fe6}
+  #menu h1{font-size:30px}
+  #legend{display:none}
+}
+@media (prefers-reduced-motion:reduce){#alert.on{animation:none}.toast{animation:none}}
+</style>
+
+<div id="app">
+  <header id="top">
+    <div class="cn"><span id="flag"></span><span id="cname">—</span></div>
+    <div class="st"><span>Бюджет</span><b id="money">—</b></div>
+    <div class="st"><span>Баланс / сутки</span><b id="inc">—</b></div>
+    <div class="st"><span>Дата</span><b id="date">—</b></div>
+    <div class="grp" id="speed" title="Скорость: часов в секунду (пробел — пауза)"></div>
+    <div class="grp"><button id="tgAD" class="on" title="Показывать зоны ПВО">Зоны ПВО</button><button id="tgFog" class="on" title="Туман войны">Туман</button></div>
+    <div id="alert">⚠ Воздушная тревога</div>
+    <div class="sp"></div>
+    <div class="grp"><button id="btnHelp">Справка</button><button id="btnMenu">Меню</button></div>
+  </header>
+  <aside id="side">
+    <nav id="tabs">
+      <button data-tab="prov" class="on">Провинция</button>
+      <button data-tab="prod">Заводы</button>
+      <button data-tab="ars">Арсенал</button>
+      <button data-tab="army">Армия</button>
+      <button data-tab="dip">Политика</button>
+      <button data-tab="log">Журнал</button>
+    </nav>
+    <div id="pc"></div>
+  </aside>
+  <div id="mapwrap">
+    <canvas id="map"></canvas>
+    <div id="mode"></div>
+    <div id="tip"></div>
+    <div id="legend"><div><i style="background:#7fd3ff"></i>ваши ракеты и БПЛА</div><div><i style="background:#ff5b4d"></i>воздушные цели противника</div><div><i style="background:#fff"></i>зенитные ракеты</div></div>
+    <div id="toasts"></div>
+  </div>
+</div>
+
+<div id="menu"><div class="in">
+  <h1>ЛИНИЯ <em>ФРОНТА</em></h1>
+  <p class="sub">Военно-экономическая стратегия на оперативной карте. Стройте заводы, закупайте БПЛА и ракеты, прикрывайте города ПВО и РЭБ, ведите сухопутные операции. Все государства на карте вымышленные, карта создаётся заново для каждой партии.</p>
+  <div class="opt"><span>Государство</span><button class="btn" id="regen">Сгенерировать новую карту</button></div>
+  <div class="nations" id="nations"></div>
+  <div class="opt"><span>Сценарий</span><div class="chips" id="scen"><span class="chip on" data-v="war">Война с соседом</span><span class="chip" data-v="peace">Мирный старт</span></div></div>
+  <div class="opt"><span>Сложность</span><div class="chips" id="diff"><span class="chip" data-v="0.8">Лёгкая</span><span class="chip on" data-v="1">Обычная</span><span class="chip" data-v="1.3">Тяжёлая</span></div></div>
+  <div class="opt"><button class="btn pri" id="start" style="padding:10px 22px;font-size:14px">Принять командование</button><span class="muted" id="selInfo"></span></div>
+</div></div>
+
+<div id="over"><div class="box" id="overBox"></div></div>
+
+<script>
+'use strict';
+/* =================== УТИЛИТЫ =================== */
+const $=s=>document.querySelector(s);
+const R=(a,b)=>a+Math.random()*(b-a), RI=(a,b)=>Math.floor(R(a,b+1)), pick=a=>a[Math.floor(Math.random()*a.length)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v, hyp=Math.hypot;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function fM(v){const a=Math.abs(v);if(a>=1000)return (v/1000).toFixed(2)+' млрд $';return v.toFixed(a<10?2:1)+' млн $';}
+function fN(v,d=1){return (Math.round(v*10**d)/10**d).toString();}
+function makeNoise(){const t=new Float32Array(65536);for(let i=0;i<65536;i++)t[i]=Math.random();
+  return (x,y)=>{const xi=Math.floor(x),yi=Math.floor(y),xf=x-xi,yf=y-yi,u=xf*xf*(3-2*xf),v=yf*yf*(3-2*yf);
+    const h=(a,b)=>t[((a&255)<<8)|(b&255)];const a=h(xi,yi),b=h(xi+1,yi),c=h(xi,yi+1),d=h(xi+1,yi+1);
+    return a+(b-a)*u+(c-a)*v+(a-b-c+d)*u*v;};}
+function fbm(n,x,y,o){let s=0,a=1,f=1,t=0;for(let i=0;i<o;i++){s+=n(x*f,y*f)*a;t+=a;a*=.5;f*=2.03;}return s/t;}
+
+/* =================== ДАННЫЕ =================== */
+const W=2000,H=1300,CELL=4,GW=W/CELL,GH=H/CELL; // 1 px карты = 1 км
+const NATIONS=[
+ {name:'Северная Федерация',color:'#b8443a',trait:'ПВО: вероятность перехвата +20%',mods:{adPk:1.2}},
+ {name:'Республика Валория',color:'#3b7dd8',trait:'БПЛА дешевле на 25%',mods:{droneCost:.75}},
+ {name:'Королевство Остмарк',color:'#3f9a5c',trait:'Доход экономики +20%',mods:{income:1.2}},
+ {name:'Карданский Союз',color:'#d07a2c',trait:'Наступление сухопутных войск +20%',mods:{atk:1.2}},
+ {name:'Ханство Зарат',color:'#8a55b8',trait:'Ракеты дешевле на 25%',mods:{missileCost:.75}},
+ {name:'Конфедерация Лиралия',color:'#1f9b94',trait:'Заводы работают на 20% быстрее',mods:{prodSpeed:1.2}},
+ {name:'Народная Республика Тесса',color:'#c9a227',trait:'Оборона +25%, пехота дешевле на 30%',mods:{def:1.25,infCost:.7}},
+];
+const TERR={1:{n:'Равнина',def:1},2:{n:'Лес',def:1.25},3:{n:'Горы',def:1.6}};
+const GROUND={
+ inf:{n:'Мотострелковый батальон',s:'МСБ',cost:25,h:24*5,hp:10,atk:1,def:1.4,up:.15,fac:'mil',imp:true,d:'Основа обороны, дёшев'},
+ tank:{n:'Танковый батальон',s:'ТБ',cost:90,h:24*10,hp:14,atk:3,def:2,up:.5,fac:'mil',imp:true,d:'Главная ударная сила'},
+ art:{n:'Артиллерийский дивизион',s:'АДН',cost:45,h:24*8,hp:8,atk:1.8,def:.8,up:.3,fac:'mil',imp:false,d:'Огневая поддержка наступления'},
+};
+// pk — вероятность поражения: small (FPV/барражирующие), drone (дальние ударные БПЛА), uav (разведка/MALE), cruise, ballistic
+const ADT={
+ manpads:{n:'Группа ПЗРК',s:'ПЗРК',cost:3,h:24*2,range:14,mag:6,cd:.12,reload:2,shot:.12,spd:1600,low:1,pk:{small:.3,drone:.45,uav:.35,cruise:.15,ballistic:0},up:.02,fac:'mil',imp:true,d:'Переносные комплексы, 14 км'},
+ shorad:{n:'ЗРПК ближнего действия',s:'ЗРПК',cost:18,h:24*6,range:30,mag:12,cd:.04,reload:.6,shot:.08,spd:2400,low:1,gun:{small:.22,drone:.3,uav:.25,cruise:.12},pk:{small:.5,drone:.75,uav:.65,cruise:.5,ballistic:0},up:.15,fac:'mil',imp:true,d:'Ракеты + пушки, 30 км. Лучший против дронов'},
+ mrsam:{n:'ЗРК средней дальности',s:'ЗРК СД',cost:110,h:24*20,range:90,mag:8,cd:.08,reload:3,shot:1,spd:3000,low:.5,pk:{small:.25,drone:.7,uav:.85,cruise:.7,ballistic:.15},up:.6,fac:'mil',imp:true,d:'90 км, по маловысотным целям ~45 км'},
+ lrsam:{n:'ЗРК большой дальности',s:'ЗРК БД',cost:450,h:24*35,range:220,mag:16,cd:.1,reload:4,shot:3.5,spd:5000,low:.33,pk:{small:.1,drone:.55,uav:.9,cruise:.75,ballistic:.6},up:2,fac:'mil',imp:true,d:'220 км, единственный надёжно сбивает баллистику'},
+ ew:{n:'Станция РЭБ',s:'РЭБ',cost:12,h:24*4,range:45,ew:true,up:.1,fac:'mil',imp:true,d:'Глушит FPV и ударные БПЛА в радиусе 45 км'},
+};
+const WPN={
+ recon:{n:'Разведывательный БПЛА',cls:'uav',cost:.12,h:12,fac:'drone',range:400,spd:110,reveal:85,loiter:14,ew:.2,imp:true,d:'Вскрывает туман войны на 85 км, барражирует 14 ч и возвращается'},
+ fpv:{n:'FPV-дроны (пакет 10 шт.)',cls:'small',cost:.08,h:3,fac:'drone',range:'front',spd:90,cnt:10,ew:.5,imp:false,dmg:{troops:.7,ad:.02,industry:0,energy:.002},d:'Только линия фронта. Сильно уязвимы к РЭБ'},
+ fpvf:{n:'FPV на оптоволокне (5 шт.)',cls:'small',cost:.15,h:5,fac:'drone',range:'front',spd:80,cnt:5,ew:0,imp:false,dmg:{troops:.8,ad:.03,industry:0,energy:.002},d:'Иммунитет к РЭБ, только линия фронта'},
+ lancet:{n:'Барражирующий боеприпас',cls:'small',cost:.04,h:6,fac:'drone',range:120,spd:110,ew:.3,imp:true,dmg:{troops:1.6,ad:.12,industry:.02,energy:.01},d:'До 120 км, охота на ПВО и технику'},
+ shahed:{n:'Ударный БПЛА дальнего действия',cls:'drone',cost:.05,h:8,fac:'drone',range:1600,spd:180,ew:.15,imp:true,dmg:{troops:1.2,ad:.08,industry:.12,energy:.045},d:'1600 км, 180 км/ч. Дёшев — бейте роем, чтобы истощить ПВО'},
+ male:{n:'Тяжёлый ударный БПЛА (MALE)',cls:'uav',cost:6,h:24*12,fac:'drone',range:700,spd:200,bombs:4,reveal:60,ew:.05,imp:true,reuse:true,dmg:{troops:2.2,ad:.15,industry:.08,energy:.03},d:'Многоразовый: 4 УАБ, разведка по пути, возвращается'},
+ cruise:{n:'Крылатая ракета',cls:'cruise',cost:1.6,h:24*3,fac:'mil',range:1500,spd:780,ew:.03,imp:true,dmg:{troops:3,ad:.3,industry:.35,energy:.1},d:'1500 км, маловысотный полёт — поздно обнаруживается'},
+ ballistic:{n:'ОТРК (баллистическая ракета)',cls:'ballistic',cost:3,h:24*5,fac:'mil',range:500,spd:4500,ew:0,imp:false,dmg:{troops:5,ad:.45,industry:.5,energy:.15},d:'500 км, перехватывают только ЗРК СД/БД'},
+};
+const BUILD={
+ civ:{n:'Гражданский завод',cost:60,h:24*20,d:'+6 млн $ в сутки'},
+ mil:{n:'Военный завод',cost:140,h:24*30,d:'+2 линии: техника, ПВО, ракеты'},
+ drone:{n:'Завод БПЛА',cost:90,h:24*18,d:'+3 линии производства дронов'},
+ fort:{n:'Укрепления',cost:35,h:24*8,d:'+25% к обороне провинции (до 3)'},
+};
+const LINES={mil:2,drone:3};
+const CAT={};
+for(const k in GROUND)CAT[k]={...GROUND[k],t:'g'};
+for(const k in ADT)CAT[k]={...ADT[k],t:'a'};
+for(const k in WPN)CAT[k]={...WPN[k],t:'w'};
+const PRIO={troops:'Войска',ad:'ПВО',industry:'Заводы',energy:'Энергетика'};
+
+/* =================== СОСТОЯНИЕ =================== */
+let elev,land,terr,provOf,SEA=0,provs=[],C=[],ads=[],projs=[],ints=[],moves=[],fx=[],salvos={},logs=[];
+let won=false,time=0,hourAcc=0,visAcc=0,player=-1,speed=2,running=false,started=false,over=false,aiIncome=1;
+let segs=[],pathProv,pathCoast,pathCountry,provPaths=[],labelPos=[];
+let adId=0,pid=0,svId=0,ownerDirty=true,fogDirty=true,panelDirty=true;
+const baseCv=document.createElement('canvas'),fogCv=document.createElement('canvas');
+baseCv.width=fogCv.width=GW;baseCv.height=fogCv.height=GH;
+const ui={tab:'prov',sel:null,mode:null,wk:null,adk:null,salvo:5,prio:'troops',frac:1,qty:1,showAD:true,fog:true,mouseDown:false,hover:null,mx:0,my:0,menuSel:0,scen:'war',diff:1};
+
+/* =================== ГЕНЕРАЦИЯ МИРА =================== */
+const SYL1=['Вол','Кра','Бел','Ост','Зар','Лир','Тес','Мир','Сла','Дуб','Гор','Яр','Кам','Рад','Све','Бор','Сос','Вер','Ниж','Рос','Кар','Лип','Тал','Вел','Ар','Мор','Пол','Стре','Глин','Чер','Озер','Дал','Бре','Зим','Луг'];
+const SYL2=['но','ла','ми','ре','го','ди','ва','ро','ле','ти','за','ка','','','',''];
+const SUF=['ск','град','поль','ов','ино','ень','ец','ица','ово','бург','як','ля','ань','ичи'];
+function genName(used){for(let t=0;t<200;t++){const n=pick(SYL1)+pick(SYL2)+pick(SUF);if(!used.has(n)&&n.length<12){used.add(n);return n;}}return 'Пункт '+used.size;}
+
+function genWorld(){
+  const N=GW*GH,n1=makeNoise(),n2=makeNoise(),n3=makeNoise(),n4=makeNoise();
+  elev=new Float32Array(N);land=new Uint8Array(N);terr=new Uint8Array(N);provOf=new Int16Array(N).fill(-1);
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+    const wx=x*CELL,wy=y*CELL,nx=wx/W-.5,ny=wy/H-.5,d=Math.sqrt(nx*nx*3.4+ny*ny*4.4);
+    let e=fbm(n1,wx/340,wy/340,5)-d*.85+fbm(n4,wx/90,wy/90,3)*.12;
+    if(x<5||y<5||x>GW-6||y>GH-6)e-=3;
+    elev[y*GW+x]=e;
+  }
+  const s=Float32Array.from(elev).sort();SEA=s[Math.floor(N*.46)];const MT=s[Math.floor(N*.93)];
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x;if(elev[i]>SEA){land[i]=1;terr[i]=elev[i]>MT?3:(fbm(n2,x/20,y/20,3)>.56?2:1);}}
+  // центры провинций
+  let seeds=[];const MIND=122;
+  for(let t=0;t<40000&&seeds.length<160;t++){const x=R(30,W-30),y=R(30,H-30),gi=(y/CELL|0)*GW+(x/CELL|0);if(!land[gi])continue;
+    let ok=true;for(const q of seeds)if((q.x-x)**2+(q.y-y)**2<MIND*MIND){ok=false;break;}if(ok)seeds.push({x,y});}
+  const wX=new Float32Array(N),wY=new Float32Array(N);
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x;wX[i]=x*CELL+2+(n3(x/22,y/22)-.5)*90;wY[i]=y*CELL+2+(n3(x/22+77,y/22+31)-.5)*90;}
+  const assign=()=>{for(let i=0;i<N;i++){if(!land[i]){provOf[i]=-1;continue;}let b=-1,bd=1e12;const px=wX[i],py=wY[i];
+    for(let k=0;k<seeds.length;k++){const dx=seeds[k].x-px,dy=seeds[k].y-py,dd=dx*dx+dy*dy;if(dd<bd){bd=dd;b=k;}}provOf[i]=b;}};
+  assign();
+  const cnt=new Int32Array(seeds.length);for(let i=0;i<N;i++)if(provOf[i]>=0)cnt[provOf[i]]++;
+  seeds=seeds.filter((_,k)=>cnt[k]>=70);assign();
+  // провинции
+  provs=seeds.map((s,id)=>({id,n:0,mx:0,my:0,tc:[0,0,0,0],nbS:new Set(),armies:{},b:{civ:0,mil:0,drone:0},fort:0,dmg:0,build:null,owner:-1,core:-1,capital:false,vis:false}));
+  segs=[];
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x,k=provOf[i];
+    if(k>=0){const p=provs[k];p.n++;p.mx+=x;p.my+=y;p.tc[terr[i]]++;}
+    if(x+1<GW){const k2=provOf[i+1];if(k2!==k){segs.push((x+1)*CELL,y*CELL,(x+1)*CELL,(y+1)*CELL,k,k2);if(k>=0&&k2>=0){provs[k].nbS.add(k2);provs[k2].nbS.add(k);}}}
+    if(y+1<GH){const k2=provOf[i+GW];if(k2!==k){segs.push(x*CELL,(y+1)*CELL,(x+1)*CELL,(y+1)*CELL,k,k2);if(k>=0&&k2>=0){provs[k].nbS.add(k2);provs[k2].nbS.add(k);}}}
+  }
+  for(const p of provs){p.mx/=p.n;p.my/=p.n;p.bd=1e9;}
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const k=provOf[y*GW+x];if(k<0)continue;const p=provs[k],d=(x-p.mx)**2+(y-p.my)**2;if(d<p.bd){p.bd=d;p.cx=(x+.5)*CELL;p.cy=(y+.5)*CELL;}}
+  const used=new Set();
+  for(const p of provs){p.nb=[...p.nbS];delete p.nbS;
+    p.terrain=p.tc[3]>p.n*.33?3:p.tc[2]>p.n*.4?2:1;
+    p.pop=Math.round(p.n/1000*R(.55,1.5)*100)/100+.2;
+    p.city=p.pop>1.4?3:p.pop>.9?2:1;p.name=genName(used);}
+  // крупнейшая связная область — для столиц
+  const comp=new Int16Array(provs.length).fill(-1);let best=-1,bestN=0;
+  for(const p of provs){if(comp[p.id]>=0)continue;const st=[p.id];comp[p.id]=p.id;let n=0;
+    while(st.length){const q=st.pop();n++;for(const m of provs[q].nb)if(comp[m]<0){comp[m]=p.id;st.push(m);}}
+    if(n>bestN){bestN=n;best=p.id;}}
+  const mainland=provs.filter(p=>comp[p.id]===best);
+  const bigP=mainland.filter(p=>p.n>600);const caps=[pick(bigP.length?bigP:mainland)];
+  while(caps.length<NATIONS.length){let bp=null,bd=-1;for(const p of mainland){let md=1e9;for(const c of caps)md=Math.min(md,hyp(p.cx-c.cx,p.cy-c.cy));md*=.6+.4*Math.min(1,p.nb.length/4);if(md>bd){bd=md;bp=p;}}caps.push(bp);}
+  caps.forEach((p,k)=>{p.owner=k;});
+  const counts=caps.map(()=>1);
+  for(let guard=0;guard<5000;guard++){
+    const order=counts.map((c,k)=>k).sort((a,b)=>counts[a]-counts[b]);let did=false;
+    for(const k of order){const cand=[];for(const p of provs)if(p.owner===k)for(const m of p.nb)if(provs[m].owner<0)cand.push(provs[m]);
+      if(!cand.length)continue;const cap=caps[k];cand.sort((a,b)=>hyp(a.cx-cap.cx,a.cy-cap.cy)-hyp(b.cx-cap.cx,b.cy-cap.cy));
+      const q=cand[Math.min(cand.length-1,RI(0,1))];q.owner=k;counts[k]++;did=true;break;}
+    if(!did)break;}
+  for(const p of provs)if(p.owner<0){let bp=null,bd=1e9;for(const q of provs)if(q.owner>=0){const d=hyp(p.cx-q.cx,p.cy-q.cy);if(d<bd){bd=d;bp=q;}}p.owner=bp.owner;}
+  // государства
+  ads=[];projs=[];ints=[];moves=[];fx=[];salvos={};logs=[];time=0;hourAcc=0;
+  C=NATIONS.map((nt,i)=>({id:i,name:nt.name,color:nt.color,trait:nt.trait,
+    mods:Object.assign({income:1,adPk:1,droneCost:1,missileCost:1,atk:1,def:1,prodSpeed:1,infCost:1},nt.mods),
+    money:600,alive:true,wars:new Set(),warStart:{},stock:{},adRes:{},queue:[],doct:{lrNoDrones:true,mrNoSmall:true},
+    capital:caps[i].id,rally:null,initProvs:0,aiHour:RI(0,23),aggr:R(.4,1.2),isPlayer:false,lines:{mil:0,drone:0},peaceOffer:false,
+    st:{launched:0,lost:0,intercepted:0,shots:0},deliv:{}}));
+  for(const c of C)setupCountry(c);
+  buildPaths();ownerDirty=true;fogDirty=true;
+}
+function slots(p){return 1+p.city;}
+function usedSlots(p){return p.b.civ+p.b.mil+p.b.drone+(p.build&&p.build.t!=='fort'?1:0);}
+function army(p,o){return p.armies[o]||(p.armies[o]={inf:0,tank:0,art:0,from:null});}
+function setupCountry(c){
+  const my=provs.filter(p=>p.owner===c.id);c.initProvs=my.length;
+  const cap=provs[c.capital];cap.capital=true;cap.pop=Math.round(cap.pop*2.4*100)/100;cap.city=3;
+  for(const p of my){p.core=c.id;const a=army(p,c.id);a.inf=1.5;
+    if(p.nb.some(n=>provs[n].owner!==c.id)){a.inf+=1.5;p.fort=1;if(Math.random()<.45)a.tank+=1;if(Math.random()<.35)a.art+=1;}}
+  const ca=army(cap,c.id);ca.inf+=2;ca.tank+=1;ca.art+=1;
+  cap.b.civ=2;cap.b.mil=1;
+  const sorted=[...my].sort((a,b)=>b.pop-a.pop);
+  const place=(t,n)=>{for(let k=0;k<n;k++){const cand=sorted.filter(p=>usedSlots(p)<slots(p));if(!cand.length)return;const p=cand[Math.min(cand.length-1,RI(0,3))];p.b[t]++;}};
+  place('civ',Math.ceil(my.length*.35));place('mil',1);place('drone',2);
+  addAD(c.id,'lrsam',cap);addAD(c.id,'mrsam',cap);addAD(c.id,'shorad',cap);
+  for(const p of my)if(p!==cap&&(p.b.mil||p.b.drone||p.b.civ>1))addAD(c.id,Math.random()<.5?'shorad':'manpads',p);
+  const border=my.filter(p=>p.nb.some(n=>provs[n].owner!==c.id));
+  for(let k=0;k<2;k++)if(border.length)addAD(c.id,'mrsam',pick(border));
+  for(let k=0;k<2;k++)if(border.length)addAD(c.id,'ew',pick(border));
+  for(let k=0;k<4;k++)if(border.length)addAD(c.id,'manpads',pick(border));
+  c.stock={recon:6,fpv:30,fpvf:6,lancet:16,shahed:40,male:2,cruise:8,ballistic:4};
+}
+function addAD(o,t,p,ready=0,x,y){const a={id:++adId,owner:o,type:t,x:x??p.cx+R(-16,16),y:y??p.cy+R(-16,16),prov:p.id,ammo:ADT[t].mag||0,cd:0,rl:0,ready,spot:{}};ads.push(a);return a;}
+
+/* =================== ГРАФИКА СЛОЁВ =================== */
+function buildPaths(){
+  pathProv=new Path2D();pathCoast=new Path2D();provPaths=provs.map(()=>new Path2D());
+  for(let i=0;i<segs.length;i+=6){const x1=segs[i],y1=segs[i+1],x2=segs[i+2],y2=segs[i+3],a=segs[i+4],b=segs[i+5];
+    const P=(a<0||b<0)?pathCoast:pathProv;P.moveTo(x1,y1);P.lineTo(x2,y2);
+    if(a>=0){provPaths[a].moveTo(x1,y1);provPaths[a].lineTo(x2,y2);}if(b>=0){provPaths[b].moveTo(x1,y1);provPaths[b].lineTo(x2,y2);}}
+}
+function hexRGB(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function renderBase(){
+  pathCountry=new Path2D();
+  for(let i=0;i<segs.length;i+=6){const a=segs[i+4],b=segs[i+5];if(a>=0&&b>=0&&provs[a].owner!==provs[b].owner){pathCountry.moveTo(segs[i],segs[i+1]);pathCountry.lineTo(segs[i+2],segs[i+3]);}}
+  const ctx=baseCv.getContext('2d'),img=ctx.createImageData(GW,GH),d=img.data;
+  const cols=C.map(c=>hexRGB(c.color));
+  const TC={1:[132,140,98],2:[78,103,70],3:[128,118,104]};
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x,o=i*4;
+    if(!land[i]){const dp=clamp((SEA-elev[i])*5,0,1);d[o]=18-dp*10;d[o+1]=48-dp*24;d[o+2]=66-dp*30;d[o+3]=255;continue;}
+    const xl=x>0?elev[i-1]:elev[i],xr=x<GW-1?elev[i+1]:elev[i],yu=y>0?elev[i-GW]:elev[i],yd=y<GH-1?elev[i+GW]:elev[i];
+    const sh=clamp(1+((xl-xr)+(yu-yd))*9,.7,1.3);const t=TC[terr[i]];const p=provs[provOf[i]];const oc=cols[p.owner];
+    const m=.42,dm=1-p.dmg*.35;
+    d[o]=(t[0]*(1-m)+oc[0]*m)*sh*dm;d[o+1]=(t[1]*(1-m)+oc[1]*m)*sh*dm;d[o+2]=(t[2]*(1-m)+oc[2]*m)*sh*dm;d[o+3]=255;}
+  ctx.putImageData(img,0,0);
+  // позиции названий стран
+  labelPos=C.map(c=>{let sx=0,sy=0,n=0;for(const p of provs)if(p.owner===c.id){sx+=p.cx*p.n;sy+=p.cy*p.n;n+=p.n;}return n?{x:sx/n,y:sy/n,n}:null;});
+  ownerDirty=false;
+}
+function renderFog(){
+  const ctx=fogCv.getContext('2d'),img=ctx.createImageData(GW,GH),d=img.data;
+  for(let i=0;i<GW*GH;i++){const k=provOf[i];if(k>=0&&!provs[k].vis){const o=i*4;d[o]=6;d[o+1]=10;d[o+2]=14;d[o+3]=150;}}
+  ctx.putImageData(img,0,0);fogDirty=false;
+}
+
+/* =================== ПОМОЩНИКИ МИРА =================== */
+function provAt(x,y){if(x<0||y<0||x>=W||y>=H)return -1;return provOf[(y/CELL|0)*GW+(x/CELL|0)];}
+function atWar(a,b){return a!==b&&a>=0&&b>=0&&C[a].wars.has(b);}
+function tot(a){return a?a.inf+a.tank+a.art:0;}
+function pw(a,m){return a?a.inf*GROUND.inf[m]+a.tank*GROUND.tank[m]+a.art*GROUND.art[m]:0;}
+function hpSum(a){return a.inf*10+a.tank*14+a.art*8;}
+function loss(a,pts){const s=hpSum(a);if(s<=0)return;const f=Math.max(0,1-pts/s);a.inf*=f;a.tank*=f;a.art*=f;}
+function myProvs(o){return provs.filter(p=>p.owner===o);}
+function nearestOwn(o,x,y){let b=null,bd=1e9;for(const p of provs)if(p.owner===o){const d=hyp(p.cx-x,p.cy-y);if(d<bd){bd=d;b=p;}}return b;}
+function frontSite(o,pi){const p=provs[pi];
+  const has=q=>q.armies[o]&&tot(q.armies[o])>.05;
+  if(has(p))return p;
+  let best=null;for(const n of p.nb){const q=provs[n];if(has(q)&&(q.owner===o||!best))best=q;}return best;}
+function costOf(c,k){const it=CAT[k];let m=1;if(it.fac==='drone')m*=c.mods.droneCost;if(k==='cruise'||k==='ballistic')m*=c.mods.missileCost;if(k==='inf')m*=c.mods.infCost;return it.cost*m;}
+function provIncome(p){const c=C[p.owner];return (p.pop*7+p.b.civ*6+(p.capital?8:0))*(1-p.dmg)*c.mods.income*(c.isPlayer?1:aiIncome);}
+function upkeep(c){let u=0;for(const p of provs){const a=p.armies[c.id];if(a)u+=a.inf*GROUND.inf.up+a.tank*GROUND.tank.up+a.art*GROUND.art.up;}
+  for(const m of moves)if(m.owner===c.id)u+=m.u.inf*GROUND.inf.up+m.u.tank*GROUND.tank.up+m.u.art*GROUND.art.up;
+  for(const a of ads)if(a.owner===c.id)u+=ADT[a.type].up;return u;}
+function income(c){let s=0;for(const p of provs)if(p.owner===c.id)s+=provIncome(p);return s;}
+function strength(c){let s=0;for(const p of provs){s+=pw(p.armies[c.id],'atk')+pw(p.armies[c.id],'def');}for(const m of moves)if(m.owner===c.id)s+=pw(m.u,'atk')+pw(m.u,'def');
+  for(const a of ads)if(a.owner===c.id)s+=ADT[a.type].cost/60;return s+c.money/80+income(c)/3;}
+function dateStr(h){const d=new Date(Date.UTC(2027,2,1)+h*3600e3);const p=n=>String(n).padStart(2,'0');return `${p(d.getUTCDate())}.${p(d.getUTCMonth()+1)}.${d.getUTCFullYear()} ${p(d.getUTCHours())}:00`;}
+function log(txt,cls=''){logs.unshift({t:time,txt,cls});if(logs.length>300)logs.pop();if(ui.tab==='log')panelDirty=true;}
+function toast(txt,cls=''){const el=document.createElement('div');el.className='toast '+cls;el.textContent=txt;$('#toasts').appendChild(el);
+  setTimeout(()=>el.remove(),4800);const all=$('#toasts').children;if(all.length>5)all[0].remove();}
+function boom(x,y,r,col){fx.push({x,y,r,t:0,max:.7+r/40,col});}
+
+/* =================== ДИПЛОМАТИЯ =================== */
+function declareWar(a,b){if(a===b||C[a].wars.has(b))return;C[a].wars.add(b);C[b].wars.add(a);C[a].warStart[b]=C[b].warStart[a]=time;
+  if(b===player)toast(`${C[a].name} объявила вам войну!`,'bad');
+  log(`${C[a].name} объявляет войну: ${C[b].name}.`,a===player||b===player?'bad':'warn');panelDirty=true;fogDirty=true;}
+function makePeace(a,b){C[a].wars.delete(b);C[b].wars.delete(a);
+  for(const p of provs){for(const [x,y] of [[a,b],[b,a]]){if(p.owner===y&&p.armies[x]&&tot(p.armies[x])>0){const home=provs[C[x].capital];const h=army(home,x),u=p.armies[x];h.inf+=u.inf;h.tank+=u.tank;h.art+=u.art;delete p.armies[x];}}}
+  log(`Заключён мир: ${C[a].name} и ${C[b].name}. Линия соприкосновения закреплена.`,'ok');
+  C[a].peaceOffer=C[b].peaceOffer=false;panelDirty=true;}
+function aiPeaceAnswer(ai,other){
+  const lost=provs.filter(p=>p.core===ai.id&&p.owner===other.id).length,gained=provs.filter(p=>p.core===other.id&&p.owner===ai.id).length;
+  const days=(time-(ai.warStart[other.id]||0))/24,sA=strength(ai),sO=strength(other);
+  if(days<7)return [false,'Война идёт меньше недели — переговоры отклонены.'];
+  if(gained>lost&&sA>sO*.8)return [false,'Противник считает, что побеждает, и требует продолжения боевых действий.'];
+  if(lost>=2||sO>sA*1.35||(days>40&&Math.random()<.5))return [true,''];
+  return [false,'Отказ. Нужно военное преимущество или занятые провинции противника.'];}
+function captureProvince(p,o){
+  const old=p.owner;p.owner=o;delete p.armies[old];if(p.armies[o])p.armies[o].rest=time+48;
+  ads=ads.filter(a=>!(a.prov===p.id&&a.owner===old));
+  let lostF=0;for(const t of ['civ','mil','drone'])for(let k=p.b[t];k>0;k--)if(Math.random()<.4){p.b[t]--;lostF++;}
+  p.build=null;p.fort=Math.floor(p.fort/2);p.dmg=Math.min(.9,p.dmg+.15);
+  if(o===player)log(`Освобождена/занята провинция ${p.name}${lostF?`, разрушено заводов: ${lostF}`:''}.`,'ok');
+  else if(old===player)log(`Потеряна провинция ${p.name} (${C[o].name}).`,'bad');
+  if(old===player||o===player)toast(o===player?`Взята провинция ${p.name}`:`Потеряна провинция ${p.name}`,o===player?'ok':'bad');
+  ownerDirty=true;fogDirty=true;panelDirty=true;
+  const oc=C[old];const rem=myProvs(old);
+  if(p.capital){p.capital=false;
+    if(!rem.length||rem.length<oc.initProvs*.35){capitulate(old,o);return;}
+    const nc=rem.sort((a,b)=>b.pop-a.pop)[0];nc.capital=true;oc.capital=nc.id;oc.money*=.7;
+    log(`${oc.name} теряет столицу! Правительство эвакуировано в ${nc.name}.`,'warn');}
+  else if(!rem.length||rem.length<oc.initProvs*.2)capitulate(old,o);}
+function capitulate(ci,to){const c=C[ci];if(!c.alive)return;c.alive=false;
+  for(const p of provs){if(p.owner===ci){p.owner=to;p.capital=false;}delete p.armies[ci];}
+  ads=ads.filter(a=>a.owner!==ci);moves=moves.filter(m=>m.owner!==ci);
+  for(const x of C){x.wars.delete(ci);}c.wars.clear();c.queue=[];
+  log(`${c.name} капитулирует. Территория переходит под контроль: ${C[to].name}.`,to===player?'ok':'warn');
+  toast(`${c.name} капитулировала`,'warn');ownerDirty=true;fogDirty=true;
+  if(ci===player)endGame(false);}
+
+/* =================== ПРОИЗВОДСТВО =================== */
+function order(c,k,qty,imp){const it=CAT[k];if(imp&&!it.imp)return 'Этот образец не продаётся за рубежом.';
+  const cost=costOf(c,k)*qty*(imp?1.6:1);if(c.money<cost)return `Недостаточно средств: нужно ${fM(cost)}.`;
+  c.money-=cost;if(imp)c.queue.push({k,qty,left:qty,imp:true,eta:time+24*7,paid:cost});else c.queue.push({k,qty,left:qty,prog:0,paid:cost});return null;}
+function deliver(c,k,n){const it=CAT[k];
+  if(it.t==='g'){let p=c.rally!=null&&provs[c.rally].owner===c.id?provs[c.rally]:provs[c.capital];army(p,c.id)[k]+=n;}
+  else if(it.t==='a')c.adRes[k]=(c.adRes[k]||0)+n;else c.stock[k]=(c.stock[k]||0)+n;
+  if(c.isPlayer)c.deliv[k]=(c.deliv[k]||0)+n;}
+function production(c){
+  const lines={mil:0,drone:0};for(const p of provs)if(p.owner===c.id){lines.mil+=p.b.mil*LINES.mil*(1-p.dmg);lines.drone+=p.b.drone*LINES.drone*(1-p.dmg);}
+  c.lines=lines;const cap={mil:lines.mil*c.mods.prodSpeed,drone:lines.drone*c.mods.prodSpeed};
+  for(const q of c.queue){if(q.imp){if(time>=q.eta){deliver(c,q.k,q.qty);q.left=0;}continue;}
+    const f=CAT[q.k].fac;if(cap[f]<=0)continue;const use=Math.min(cap[f],q.left);cap[f]-=use;q.prog+=use;
+    const h=CAT[q.k].h;while(q.prog>=h&&q.left>0){q.prog-=h;q.left--;deliver(c,q.k,1);}}
+  c.queue=c.queue.filter(q=>q.left>0);
+  if(c.isPlayer){const ks=Object.keys(c.deliv);if(ks.length){log('Поставка: '+ks.map(k=>`${CAT[k].n} ×${c.deliv[k]}`).join(', ')+'.','ok');c.deliv={};panelDirty=true;}}}
+function startBuild(c,p,t){const B=BUILD[t];
+  if(p.owner!==c.id)return 'Можно строить только на своей территории.';if(p.build)return 'В провинции уже идёт строительство.';
+  if(t==='fort'){if(p.fort>=3)return 'Укрепления уже максимальные.';}else if(usedSlots(p)>=slots(p))return 'Нет свободных площадок (зависят от размера города).';
+  if(c.money<B.cost)return `Недостаточно средств: нужно ${fM(B.cost)}.`;
+  c.money-=B.cost;p.build={t,left:B.h,total:B.h};return null;}
+
+/* =================== ПВО, РАКЕТЫ, БПЛА =================== */
+function fireSalvo(o,wk,site,x,y,n,prio){
+  const Wp=WPN[wk],pi=provAt(x,y),c=C[o];
+  const sv={id:++svId,owner:o,w:wk,prov:pi,tgt:pi>=0?provs[pi].owner:-1,launched:n*(Wp.cnt||1),down:0,ew:0,hit:0,pending:n,troops:0,energy:0,items:{},prio,noAD:false,noTroops:false};
+  salvos[sv.id]=sv;c.st.launched+=sv.launched;
+  const detour=(Wp.cls==='drone'&&n>=4);
+  for(let i=0;i<n;i++){const sx=site.cx+R(-8,8),sy=site.cy+R(-8,8),tx=x+(n>1?R(-9,9):0),ty=y+(n>1?R(-9,9):0);
+    const p={id:++pid,sv:sv.id,owner:o,w:wk,x:sx,y:sy,sx,sy,tx,ty,prio,delay:i*(Wp.cls==='small'?.02:Wp.cls==='drone'?.06:.1)+R(0,.03),n:Wp.cnt||1,eng:0,state:'fly',ang:0,t:0,hd:0,resolved:false};
+    if(detour&&Math.random()<.7){const dx=tx-sx,dy=ty-sy,L=hyp(dx,dy)||1,off=R(-.35,.35)*Math.min(L,600);p.wx=sx+dx*R(.35,.6)-dy/L*off;p.wy=sy+dy*R(.35,.6)+dx/L*off;}
+    projs.push(p);}
+  return sv;}
+function resolveProj(p){if(p.resolved)return;p.resolved=true;const sv=salvos[p.sv];if(!sv)return;sv.pending--;if(sv.pending<=0){reportSalvo(sv);delete salvos[sv.id];}}
+function killOne(p,how){p.n--;const sv=salvos[p.sv];if(sv){if(how==='ew')sv.ew++;else sv.down++;}
+  C[p.owner].st.lost++;
+  if(p.n<=0){p.dead=true;boom(p.x,p.y,WPN[p.w].cls==='small'?4:9,how==='ew'?'#99aadd':'#ffb347');resolveProj(p);}}
+function strike(o,wk,x,y,hits,prio,sv){
+  const pi=provAt(x,y);if(pi<0||hits<=0)return;const p=provs[pi],D=WPN[wk].dmg;
+  if(sv)sv.hit+=hits;
+  const add=(s,n=1)=>{if(sv)sv.items[s]=(sv.items[s]||0)+n;};
+  const hostile=Object.keys(p.armies).map(Number).filter(q=>atWar(o,q)&&tot(p.armies[q])>.01);
+  const ownerHostile=atWar(o,p.owner);
+  if(prio==='troops'){if(!hostile.length){if(sv)sv.noTroops=true;}else{let pts=D.troops*hits*R(.7,1.3);for(const q of hostile){const a=p.armies[q],b=tot(a);loss(a,pts/hostile.length);if(sv)sv.troops+=b-tot(a);}}}
+  else if(prio==='ad'){const cand=ads.filter(a=>a.prov===pi&&atWar(o,a.owner));if(!cand.length&&sv)sv.noAD=true;
+    for(let h=0;h<hits&&cand.length;h++)if(Math.random()<D.ad){const a=cand.splice(Math.floor(Math.random()*cand.length),1)[0];ads=ads.filter(z=>z!==a);add('уничтожен '+ADT[a.type].n);boom(a.x,a.y,14,'#ff7a3d');}}
+  else if(prio==='industry'&&ownerHostile){for(let h=0;h<hits;h++){if(Math.random()<D.industry){const ts=['civ','mil','drone'].filter(t=>p.b[t]>0);if(ts.length){const t=pick(ts);p.b[t]--;add('разрушен '+BUILD[t].n);continue;}}
+      const e=D.energy*.5;p.dmg=Math.min(.9,p.dmg+e);if(sv)sv.energy+=e;}ownerDirty=true;}
+  else if(prio==='energy'&&ownerHostile){const e=D.energy*hits*R(.8,1.2);const b=p.dmg;p.dmg=Math.min(.9,p.dmg+e);if(sv)sv.energy+=p.dmg-b;ownerDirty=true;}
+  if(p.owner===player||p.armies[player])panelDirty=true;}
+function effText(sv){const r=[];
+  if(sv.troops>.005)r.push(`выведено из строя ≈${sv.troops.toFixed(2)} батальона`);
+  if(sv.energy>.001)r.push(`мощность энергосистемы −${Math.round(sv.energy*100)}%`);
+  for(const k in sv.items)r.push(k+(sv.items[k]>1?` ×${sv.items[k]}`:''));
+  if(!r.length){if(sv.prio==='ad'&&sv.noAD)r.push('ПВО в районе цели не обнаружено');else if(sv.prio==='troops'&&sv.noTroops)r.push('войск противника в районе нет');else r.push('значимого ущерба нет');}
+  return r.join('; ');}
+function reportSalvo(sv){const w=WPN[sv.w],pn=sv.prov>=0?provs[sv.prov].name:'море';
+  if(sv.w==='recon'){if(sv.owner===player&&sv.down+sv.ew>0)log(`Разведывательный БПЛА потерян над районом ${pn}.`,'bad');return;}
+  if(sv.owner===player){const vis=sv.prov>=0&&provs[sv.prov].vis;
+    let t=`Удар (${w.n}) по ${pn}: запущено ${sv.launched}, сбито ${sv.down}${sv.ew?`, подавлено РЭБ ${sv.ew}`:''}, достигли цели ${sv.hit}.`;
+    if(sv.hit)t+=vis?' Итог: '+effText(sv)+'.':' Результат не подтверждён: нет разведданных над целью.';
+    log(t,sv.hit?'ok':'bad');}
+  else if(sv.tgt===player){log(`Атака: ${C[sv.owner].name} — ${w.n} ×${sv.launched} по ${pn}. Сбито ${sv.down}${sv.ew?`, РЭБ ${sv.ew}`:''}, попаданий ${sv.hit}.${sv.hit?' Последствия: '+effText(sv)+'.':''}`,sv.hit?'bad':'ok');}}
+function adStep(dt){
+  for(const a of ads){const T=ADT[a.type],c=C[a.owner];
+    if(a.ready>0){a.ready-=dt;continue;}if(T.ew)continue;
+    if(a.ammo<T.mag){a.rl+=dt;if(a.rl>=T.reload){a.rl=0;if(c.money>=T.shot){c.money-=T.shot;a.ammo++;}}}
+    a.cd-=dt;if(a.cd>0)continue;if(!c.wars.size)continue;
+    let best=null,bd=1e9,bc=null;
+    for(const p of projs){if(p.dead||p.delay>0||!c.wars.has(p.owner))continue;const cls=WPN[p.w].cls;
+      if(T.pk[cls]<=0)continue;
+      if(a.type==='lrsam'&&c.doct.lrNoDrones&&(cls==='drone'||cls==='small'))continue;
+      if(a.type==='mrsam'&&c.doct.mrNoSmall&&cls==='small')continue;
+      const er=T.range*((cls==='small'||cls==='drone'||cls==='cruise')?T.low:1);
+      const d=hyp(p.x-a.x,p.y-a.y);if(d>er||d>=bd)continue;
+      if(p.eng>=(cls==='ballistic'?2:1)*Math.min(3,p.n))continue;
+      best=p;bd=d;bc=cls;}
+    if(!best)continue;
+    if(a.ammo>0){a.ammo--;a.cd=T.cd;best.eng++;c.st.shots++;a.spot[best.owner]=time+24;
+      ints.push({x:a.x,y:a.y,t:best,spd:Math.max(T.spd,WPN[best.w].spd*1.4),pk:Math.min(.97,T.pk[bc]*c.mods.adPk),life:.25,owner:a.owner,tr:[]});}
+    else if(T.gun&&bd<T.range*.45&&T.gun[bc]){a.cd=.03;a.spot[best.owner]=time+24;fx.push({x:a.x,y:a.y,x2:best.x,y2:best.y,t:0,max:.15,gun:true});
+      if(Math.random()<T.gun[bc]*c.mods.adPk){c.st.intercepted++;killOne(best,'ad');}}}}
+function intStep(dt){
+  for(const it of ints){const t=it.t;
+    if(t.dead||t.n<=0){it.dead=true;continue;}
+    const dx=t.x-it.x,dy=t.y-it.y,d=hyp(dx,dy),mv=it.spd*dt;it.life-=dt;
+    if(Math.random()<.5){it.tr.push(it.x,it.y);if(it.tr.length>16)it.tr.splice(0,2);}
+    if(d<=mv+2){it.dead=true;t.eng=Math.max(0,t.eng-1);
+      if(Math.random()<it.pk){C[it.owner].st.intercepted++;killOne(t,'ad');boom(t.x,t.y,7,'#fff2b0');}else boom(it.x,it.y,3,'#cccccc');continue;}
+    it.x+=dx/d*mv;it.y+=dy/d*mv;
+    if(it.life<=0){it.dead=true;t.eng=Math.max(0,t.eng-1);}}
+  ints=ints.filter(i=>!i.dead);}
+function projStep(dt){
+  const ewList=ads.filter(a=>ADT[a.type].ew&&a.ready<=0);
+  for(const p of projs){if(p.dead)continue;if(p.delay>0){p.delay-=dt;continue;}
+    const Wp=WPN[p.w];
+    // РЭБ
+    if(Wp.ew>0&&p.state!=='return')for(const e of ewList){if(!atWar(e.owner,p.owner))continue;if(hyp(p.x-e.x,p.y-e.y)>ADT.ew.range)continue;
+      const pr=1-Math.exp(-Wp.ew*6*dt);const k=p.n;for(let i=0;i<k&&!p.dead;i++)if(Math.random()<pr){killOne(p,'ew');e.spot[p.owner]=time+12;}if(p.dead)break;}
+    if(p.dead)continue;
+    if(p.state==='loiter'){p.t-=dt;p.ang+=dt*2.2;p.x=p.tx+Math.cos(p.ang)*16;p.y=p.ty+Math.sin(p.ang)*16;p.hd=p.ang+Math.PI/2;if(p.t<=0)p.state='return';continue;}
+    let tx=p.tx,ty=p.ty;if(p.state==='return'){tx=p.sx;ty=p.sy;}else if(p.wx!=null){tx=p.wx;ty=p.wy;}
+    const dx=tx-p.x,dy=ty-p.y,d=hyp(dx,dy),mv=Wp.spd*dt;p.hd=Math.atan2(dy,dx);
+    if(d>mv){p.x+=dx/d*mv;p.y+=dy/d*mv;continue;}
+    p.x=tx;p.y=ty;
+    if(p.state==='return'){p.dead=true;C[p.owner].stock[p.w]=(C[p.owner].stock[p.w]||0)+1;continue;}
+    if(p.wx!=null){p.wx=null;continue;}
+    // прибытие к цели
+    if(p.w==='recon'){p.state='loiter';p.t=Wp.loiter;resolveProj(p);visAcc=1;continue;}
+    if(p.w==='male'){strike(p.owner,'male',p.tx,p.ty,Wp.bombs,p.prio,salvos[p.sv]);for(let i=0;i<4;i++)boom(p.tx+R(-8,8),p.ty+R(-8,8),10,'#ff9d3d');resolveProj(p);p.state='return';continue;}
+    strike(p.owner,p.w,p.tx,p.ty,p.n,p.prio,salvos[p.sv]);
+    boom(p.tx,p.ty,Wp.cls==='ballistic'?26:Wp.cls==='cruise'?18:Wp.cls==='drone'?12:6,'#ff8a2b');
+    p.dead=true;resolveProj(p);}
+  projs=projs.filter(p=>!p.dead);}
+
+/* =================== НАЗЕМНЫЕ ОПЕРАЦИИ =================== */
+function hopH(a,b){return clamp(hyp(provs[a].cx-provs[b].cx,provs[a].cy-provs[b].cy)/5,8,48);}
+function findPath(o,from,to){if(from===to)return null;const prev=new Int16Array(provs.length).fill(-2);prev[from]=-1;const q=[from];
+  while(q.length){const c=q.shift();if(c===to)break;for(const n of provs[c].nb){if(prev[n]!==-2)continue;if(n!==to&&provs[n].owner!==o)continue;prev[n]=c;q.push(n);}}
+  if(prev[to]===-2)return null;const path=[];for(let c=to;c!==-1;c=prev[c])path.unshift(c);return path;}
+function sendArmy(o,from,to,frac){const fp=provs[from],a=fp.armies[o];if(!a||tot(a)<.05)return 'В провинции нет ваших войск.';
+  const tp=provs[to];if(tp.owner!==o&&!atWar(o,tp.owner))return `Нет войны с государством «${C[tp.owner].name}».`;
+  const path=findPath(o,from,to);if(!path)return 'Нет сухопутного маршрута через подконтрольные провинции.';
+  const u={inf:a.inf*frac,tank:a.tank*frac,art:a.art*frac};a.inf-=u.inf;a.tank-=u.tank;a.art-=u.art;
+  if(tot(a)<.02&&!Object.keys(fp.armies).some(k=>+k!==o))delete fp.armies[o];
+  moves.push({owner:o,path,i:0,u,left:hopH(path[0],path[1]),hop:hopH(path[0],path[1])});return null;}
+function moveHour(){
+  for(const m of moves){m.left-=1;if(m.left>0)continue;m.i++;const P=provs[m.path[m.i]];
+    const last=m.i>=m.path.length-1;
+    if(last||P.owner!==m.owner){
+      if(P.owner!==m.owner&&!atWar(m.owner,P.owner)){const back=provs[m.path[m.i-1]];const a=army(back,m.owner);a.inf+=m.u.inf;a.tank+=m.u.tank;a.art+=m.u.art;}
+      else{const a=army(P,m.owner);a.inf+=m.u.inf;a.tank+=m.u.tank;a.art+=m.u.art;a.from=m.path[m.i-1];
+        if(P.owner!==m.owner&&(m.owner===player||P.owner===player))fogDirty=true;}
+      m.done=true;}
+    else{m.hop=m.left=hopH(m.path[m.i],m.path[m.i+1]);}}
+  moves=moves.filter(m=>!m.done);}
+function combatHour(){
+  for(const p of provs){
+    for(const k in p.armies)if(tot(p.armies[k])<.02&&+k!==p.owner)delete p.armies[k];
+    const keys=Object.keys(p.armies).map(Number);p.battle=false;
+    const defO=p.owner,def=p.armies[defO];const att=keys.filter(o=>o!==defO&&atWar(o,defO)&&tot(p.armies[o])>.02);
+    if(!att.length)continue;
+    if(!def||tot(def)<.03){let w=att[0];for(const o of att)if(pw(p.armies[o],'atk')>pw(p.armies[w],'atk'))w=o;captureProvince(p,w);continue;}
+    p.battle=true;
+    let A=0;const As={};for(const o of att){As[o]=pw(p.armies[o],'atk')*C[o].mods.atk;A+=As[o];}
+    const D=pw(def,'def')*C[defO].mods.def*TERR[p.terrain].def*(1+.25*p.fort);
+    const k=.01;loss(def,A*k*R(.7,1.3));
+    for(const o of att){loss(p.armies[o],D*k*R(.7,1.3)*(As[o]/A));
+      if(As[o]<D*.3&&tot(p.armies[o])>.02){const a=p.armies[o],back=a.from!=null&&provs[a.from].owner===o?a.from:null;
+        if(back!=null){const b=army(provs[back],o);b.inf+=a.inf;b.tank+=a.tank;b.art+=a.art;}
+        delete p.armies[o];if(o===player)log(`Наступление на ${p.name} отбито, войска отходят.`,'bad');if(defO===player)log(`Атака на ${p.name} отражена.`,'ok');}}
+    if(defO===player||p.armies[player])panelDirty=true;}}
+
+/* =================== ИСКУССТВЕННЫЙ ИНТЕЛЛЕКТ =================== */
+function aiDeploy(c){const my=myProvs(c.id);if(!my.length)return;const enemies=[...c.wars];
+  for(const t in c.adRes){while(c.adRes[t]>0){let best=null,bs=-1e9;
+      for(const p of my){let s=(p.capital?10:0)+p.b.mil*3+p.b.drone*3+p.b.civ*1.5+Math.random()*2;
+        const front=p.nb.some(n=>enemies.includes(provs[n].owner));if(front)s+=t==='ew'||t==='manpads'||t==='shorad'?6:2;
+        s-=ads.filter(a=>a.prov===p.id&&a.type===t).length*6;if(s>bs){bs=s;best=p;}}
+      addAD(c.id,t,best,6);c.adRes[t]--;}}}
+function aiDaily(c){
+  const my=myProvs(c.id);if(!my.length)return;const war=c.wars.size>0;
+  // стройка
+  if(c.money>(war?350:200)){const t=war?(Math.random()<.5?'drone':'mil'):(Math.random()<.6?'civ':Math.random()<.5?'mil':'drone');
+    const cand=my.filter(p=>!p.build&&usedSlots(p)<slots(p));if(cand.length)startBuild(c,pick(cand),t);
+    else if(war){const f=my.filter(p=>!p.build&&p.fort<2&&p.nb.some(n=>c.wars.has(provs[n].owner)));if(f.length)startBuild(c,pick(f),'fort');}}
+  const inQ=k=>c.queue.filter(q=>q.k===k).reduce((s,q)=>s+q.left,0);
+  const have=t=>ads.filter(a=>a.owner===c.id&&a.type===t).length+(c.adRes[t]||0)+inQ(t);
+  const buy=(k,n,imp)=>{const cost=costOf(c,k)*n*(imp?1.6:1);if(c.money-cost>60)order(c,k,n,imp);};
+  const want={lrsam:1+Math.floor(my.length/9),mrsam:Math.ceil(my.length/4),shorad:Math.ceil(my.length/2.5),manpads:Math.ceil(my.length/1.5),ew:war?4:2};
+  for(const t in want)if(have(t)<want[t])buy(t,1,c.money>1200&&Math.random()<.3);
+  const stockT={shahed:war?90:40,fpv:war?60:20,lancet:war?30:12,recon:6,cruise:war?12:6,ballistic:war?6:3,male:2,fpvf:war?10:4};
+  for(const k in stockT){const h=(c.stock[k]||0)+inQ(k);if(h<stockT[k])buy(k,Math.min(stockT[k]-h,k==='shahed'?30:k==='fpv'?20:5));}
+  let troops=0;for(const p of provs)troops+=tot(p.armies[c.id]);
+  const tWant=war?my.length*3.2:my.length*2;const qG=inQ('inf')+inQ('tank')+inQ('art');
+  if(troops+qG<tWant&&qG<6){buy('inf',2);if(Math.random()<.6)buy('tank',1);if(Math.random()<.4)buy('art',1);}
+  aiDeploy(c);
+  // дипломатия
+  if(!war&&time/24>6&&Math.random()<.025*c.aggr){
+    const nbs=new Set();for(const p of my)for(const n of p.nb){const o=provs[n].owner;if(o!==c.id&&C[o].alive)nbs.add(o);}
+    const s=strength(c);const tg=[...nbs].filter(o=>s>strength(C[o])*1.15&&C[o].wars.size<=1&&(o!==player||time/24>20));if(tg.length)declareWar(c.id,pick(tg));}
+  for(const e of [...c.wars]){const days=(time-c.warStart[e])/24;
+    if(e===player){if(!c.peaceOffer&&days>20){const [ok]=aiPeaceAnswer(c,C[player]);if(ok&&Math.random()<.25){c.peaceOffer=true;log(`${c.name} предлагает мир. Ответ — во вкладке «Политика».`,'warn');toast(`${c.name} предлагает мир`,'warn');panelDirty=true;}}}
+    else if(!C[e].isPlayer&&days>35&&Math.random()<.04)makePeace(c.id,e);}}
+function aiStrike(c){
+  for(const e of c.wars){const ec=C[e];if(!ec.alive)continue;
+    const eprov=myProvs(e);if(!eprov.length)continue;
+    // стратегический удар
+    if(Math.random()<.45){
+      const sc=p=>p.b.mil*3+p.b.drone*4+p.b.civ*2+(p.capital?4:0)+(p.dmg<.5?2:0)+Math.random()*4;
+      const tg=eprov.sort((a,b)=>sc(b)-sc(a))[0];const site=nearestOwn(c.id,tg.cx,tg.cy);if(!site)continue;const d=hyp(site.cx-tg.cx,site.cy-tg.cy);
+      const prio=pick(['industry','energy','energy','industry','ad']);
+      const ns=Math.min(c.stock.shahed|0,RI(6,28));if(ns>0&&d<=WPN.shahed.range){c.stock.shahed-=ns;fireSalvo(c.id,'shahed',site,tg.cx+R(-10,10),tg.cy+R(-10,10),ns,prio);}
+      if((c.stock.cruise|0)>1&&Math.random()<.5&&d<=WPN.cruise.range){const n=Math.min(c.stock.cruise,RI(1,4));c.stock.cruise-=n;fireSalvo(c.id,'cruise',site,tg.cx,tg.cy,n,prio==='ad'?'ad':'industry');}
+      if((c.stock.ballistic|0)>0&&Math.random()<.3&&d<=WPN.ballistic.range){const n=Math.min(c.stock.ballistic,RI(1,2));c.stock.ballistic-=n;fireSalvo(c.id,'ballistic',site,tg.cx,tg.cy,n,pick(['ad','industry']));}}
+    // фронт
+    for(const p of provs){if(!(p.armies[c.id]&&tot(p.armies[c.id])>.3))continue;
+      for(const n of p.nb){const q=provs[n];const ea=q.armies[e];if(!ea||tot(ea)<.1)continue;
+        if((c.stock.fpv|0)>0&&Math.random()<.5){const k=Math.min(c.stock.fpv,RI(1,3));c.stock.fpv-=k;fireSalvo(c.id,'fpv',p,q.cx+R(-10,10),q.cy+R(-10,10),k,'troops');}
+        if((c.stock.lancet|0)>0&&Math.random()<.3){const k=Math.min(c.stock.lancet,RI(1,2));c.stock.lancet-=k;fireSalvo(c.id,'lancet',p,q.cx,q.cy,k,Math.random()<.5?'ad':'troops');}
+        if((c.stock.male|0)>0&&Math.random()<.08){c.stock.male--;fireSalvo(c.id,'male',nearestOwn(c.id,q.cx,q.cy),q.cx,q.cy,1,'troops');}
+        break;}}}}
+function aiGround(c){
+  const enemies=[...c.wars].filter(e=>C[e].alive);if(!enemies.length)return;
+  const isFront=p=>p.owner===c.id&&p.nb.some(n=>enemies.includes(provs[n].owner));
+  const dist=new Int16Array(provs.length).fill(999);const q=[];for(const p of provs)if(isFront(p)){dist[p.id]=0;q.push(p.id);}
+  while(q.length){const x=q.shift();for(const n of provs[x].nb)if(provs[n].owner===c.id&&dist[n]>dist[x]+1){dist[n]=dist[x]+1;q.push(n);}}
+  for(const p of provs){const a=p.armies[c.id];if(!a||tot(a)<.25||p.battle)continue;if(p.owner!==c.id)continue;
+    if(dist[p.id]>0&&dist[p.id]<999){const nx=p.nb.find(n=>provs[n].owner===c.id&&dist[n]===dist[p.id]-1);if(nx!=null)sendArmy(c.id,p.id,nx,p.capital?.6:.85);}
+    else if(dist[p.id]===0){const targets=p.nb.map(n=>provs[n]).filter(t=>enemies.includes(t.owner));
+      let best=null,br=0;for(const t of targets){const D=pw(t.armies[t.owner],'def')*C[t.owner].mods.def*TERR[t.terrain].def*(1+.25*t.fort)+.2;
+        const A=pw(a,'atk')*.75*c.mods.atk;const r=A/D;if(r>br){br=r;best=t;}}
+      if(best&&br>(best.owner===player?2.2:1.7)&&time-(c.warStart[best.owner]||0)>96&&!((a.rest||0)>time))sendArmy(c.id,p.id,best.id,.7);}}}
+
+/* =================== ЦИКЛ СИМУЛЯЦИИ =================== */
+function updateVis(){if(player<0)return;const nv=new Uint8Array(provs.length);
+  for(const p of provs){const mine=p.owner===player||(p.armies[player]&&tot(p.armies[player])>.02);if(mine){nv[p.id]=1;for(const n of p.nb)nv[n]=1;}}
+  for(const q of projs)if(q.owner===player&&WPN[q.w].reveal&&q.delay<=0)for(const p of provs)if(hyp(p.cx-q.x,p.cy-q.y)<WPN[q.w].reveal+30)nv[p.id]=1;
+  for(const p of provs){const v=!!nv[p.id];if(v!==p.vis){p.vis=v;fogDirty=true;}}}
+function hourTick(){
+  const h=Math.round(time);
+  for(const c of C){if(!c.alive)continue;c.money+=(income(c)-upkeep(c))/24;production(c);}
+  for(const p of provs){if(p.build){p.build.left-=1-p.dmg*.5;if(p.build.left<=0){const t=p.build.t;if(t==='fort')p.fort++;else p.b[t]++;p.build=null;
+        if(p.owner===player){log(`Построено: ${BUILD[t].n} в ${p.name}.`,'ok');panelDirty=true;}}}
+    if(p.dmg>0){p.dmg=Math.max(0,p.dmg-.0012);if(Math.random()<.02)ownerDirty=true;}}
+  moveHour();combatHour();
+  for(const c of C){if(!c.alive||c.isPlayer)continue;if(h%24===c.aiHour)aiDaily(c);if(h%6===c.aiHour%6)aiGround(c);if(c.wars.size&&h%8===c.aiHour%8)aiStrike(c);}
+  // воздушная тревога
+  let inc=0;for(const p of projs){if(p.alerted||p.owner===player||p.delay>0)continue;const pi=provAt(p.tx,p.ty);if(pi>=0&&provs[pi].owner===player){p.alerted=true;inc+=p.n;}}
+  hourTick.acc=(hourTick.acc||0)+inc;if(hourTick.acc&&time-(hourTick.lt||-99)>=4){toast(`Воздушная тревога: к вашей территории летят ${hourTick.acc} целей`,'bad');hourTick.lt=time;hourTick.acc=0;$('#alert').classList.add('on');clearTimeout(hourTick.al);hourTick.al=setTimeout(()=>$('#alert').classList.remove('on'),4000);}
+  if(h%24===0)dailyTick();
+  updateVis();panelDirty=true;}
+function dailyTick(){if(over||won||player<0)return;const alive=C.filter(c=>c.alive&&c.id!==player);const mine=myProvs(player).length;
+  if(!alive.length||mine>=provs.length*.6)endGame(true);}
+function simStep(dt){time+=dt;projStep(dt);intStep(dt);adStep(dt);
+  visAcc+=dt;if(visAcc>=.25){visAcc=0;updateVis();}
+  hourAcc+=dt;while(hourAcc>=1){hourAcc-=1;hourTick();}}
+function endGame(win){if(over)return;over=true;running=false;setSpeedUI();
+  const c=C[player];
+  showOver(`<h2>${win?'Победа':'Поражение'}</h2><p>${win?`${esc(c.name)} установила контроль над большей частью континента.`:`${esc(c.name)} капитулировала.`}</p>
+  <div class="kv" style="margin:12px 0"><span>Провинций под контролем</span><b>${myProvs(player).length} из ${provs.length}</b><span>Запущено ракет и БПЛА</span><b>${c.st.launched}</b><span>Зенитных пусков</span><b>${c.st.shots}</b><span>Сбито воздушных целей</span><b>${c.st.intercepted}</b><span>Дней войны</span><b>${Math.floor(time/24)}</b></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">${win?'<button class="btn" data-act="closeOver">Продолжить игру</button>':''}<button class="btn pri" data-act="toMenu">Новая партия</button></div>`);
+  if(win){over=false;won=true;}}
+
+/* =================== ОТРИСОВКА =================== */
+const cv=$('#map'),ctx=cv.getContext('2d');const cam={x:0,y:0,z:.5};let DPR=1,VW=0,VH=0;
+function resize(){const r=$('#mapwrap').getBoundingClientRect();DPR=Math.min(2,window.devicePixelRatio||1);VW=r.width;VH=r.height;cv.width=VW*DPR;cv.height=VH*DPR;}
+function fitCam(){cam.z=Math.min(VW/W,VH/H)*1.02;cam.x=W/2-VW/2/cam.z;cam.y=H/2-VH/2/cam.z;}
+function focus(x,y,z){cam.z=z??cam.z;cam.x=x-VW/2/cam.z;cam.y=y-VH/2/cam.z;}
+function toWorld(sx,sy){return [sx/cam.z+cam.x,sy/cam.z+cam.y];}
+function visibleToPlayer(x,y){if(player<0||!ui.fog)return true;const pi=provAt(x,y);if(pi>=0&&provs[pi].vis)return true;
+  for(const a of ads)if(a.owner===player&&!ADT[a.type].ew&&hyp(a.x-x,a.y-y)<ADT[a.type].range)return true;return false;}
+function adVisible(a){return player<0||!ui.fog||a.owner===player||provs[a.prov].vis||(a.spot[player]||0)>time;}
+function drawUnitIcon(x,y,a,col,z){const t=tot(a);if(t<.02)return;const w=24/z,h=15/z;
+  ctx.fillStyle=col;ctx.strokeStyle='#0b0f13';ctx.lineWidth=1.5/z;ctx.fillRect(x-w/2,y-h/2,w,h);ctx.strokeRect(x-w/2,y-h/2,w,h);
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.2/z;ctx.beginPath();
+  if(a.tank>=a.inf*.5&&a.tank>=a.art){ctx.ellipse(x,y,w*.3,h*.25,0,0,7);}else if(a.art>a.inf){ctx.arc(x,y,h*.16,0,7);ctx.fillStyle='#fff';ctx.fill();}else{ctx.moveTo(x-w/2,y-h/2);ctx.lineTo(x+w/2,y+h/2);ctx.moveTo(x+w/2,y-h/2);ctx.lineTo(x-w/2,y+h/2);}
+  ctx.stroke();
+  ctx.font=`600 ${10/z}px "JetBrains Mono",monospace`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#0b0f13';ctx.fillText(fN(t),x+.6/z,y+h/2+1.6/z);ctx.fillStyle='#fff';ctx.fillText(fN(t),x,y+h/2+1/z);}
+function render(rdt){
+  ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#071722';ctx.fillRect(0,0,cv.width,cv.height);
+  if(!provs.length)return;
+  if(ownerDirty)renderBase();if(fogDirty)renderFog();
+  const z=cam.z;ctx.setTransform(z*DPR,0,0,z*DPR,-cam.x*z*DPR,-cam.y*z*DPR);
+  ctx.imageSmoothingEnabled=true;ctx.drawImage(baseCv,0,0,W,H);
+  ctx.lineJoin='round';
+  ctx.strokeStyle='rgba(10,15,20,.28)';ctx.lineWidth=.8/z;ctx.stroke(pathProv);
+  ctx.strokeStyle='rgba(180,220,240,.45)';ctx.lineWidth=1.3/z;ctx.stroke(pathCoast);
+  ctx.strokeStyle='rgba(8,10,12,.85)';ctx.lineWidth=2.6/z;ctx.stroke(pathCountry);
+  if(started&&ui.fog)ctx.drawImage(fogCv,0,0,W,H);
+  // фронт: подсветка границ с врагами
+  if(player>=0){ctx.strokeStyle='rgba(229,83,75,.8)';ctx.lineWidth=2/z;ctx.setLineDash([5/z,4/z]);const fp=new Path2D();
+    for(let i=0;i<segs.length;i+=6){const a=segs[i+4],b=segs[i+5];if(a<0||b<0)continue;const oa=provs[a].owner,ob=provs[b].owner;if((oa===player&&atWar(player,ob))||(ob===player&&atWar(player,oa))){fp.moveTo(segs[i],segs[i+1]);fp.lineTo(segs[i+2],segs[i+3]);}}
+    ctx.stroke(fp);ctx.setLineDash([]);}
+  // выбранная/наведённая провинция
+  if(ui.hover!=null&&ui.hover!==ui.sel){ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=1.5/z;ctx.stroke(provPaths[ui.hover]);}
+  if(ui.sel!=null){ctx.strokeStyle='#f0cd73';ctx.lineWidth=2.4/z;ctx.stroke(provPaths[ui.sel]);}
+  // названия стран
+  if(z<1.15){ctx.textAlign='center';ctx.textBaseline='middle';C.forEach((c,i)=>{const L=labelPos[i];if(!L||!c.alive)return;
+    const fs=clamp(Math.sqrt(L.n)/5,13,26)/z;ctx.font=`${fs}px "Russo One",sans-serif`;ctx.fillStyle='rgba(10,12,14,.55)';ctx.fillText(c.name.toUpperCase(),L.x+1/z,L.y+1/z);ctx.fillStyle='rgba(255,255,255,.75)';ctx.fillText(c.name.toUpperCase(),L.x,L.y);});}
+  // города
+  for(const p of provs){const r=(p.capital?4.5:2+p.city*.6)/z;ctx.fillStyle=p.capital?'#f0cd73':'#e8edf0';ctx.strokeStyle='#0b0f13';ctx.lineWidth=1/z;
+    ctx.beginPath();if(p.capital){star(p.cx,p.cy-18/z,r);}else ctx.arc(p.cx,p.cy-18/z,r,0,7);ctx.fill();ctx.stroke();
+    if(z>.75||p.capital){ctx.font=`${(p.capital?12:10.5)/z}px "Golos Text",sans-serif`;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillText(p.name,p.cx+r+3/z+.8/z,p.cy-18/z+.8/z);ctx.fillStyle='#eef2f4';ctx.fillText(p.name,p.cx+r+3/z,p.cy-18/z);}
+    if(p.build&&(p.owner===player)){ctx.fillStyle='#e3b341';ctx.font=`${10/z}px sans-serif`;ctx.fillText('⚒',p.cx-r-12/z,p.cy-18/z);}
+    const nf=p.b.mil+p.b.drone+p.b.civ;if(nf&&(p.owner===player||p.vis||!ui.fog)&&z>.6){ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(p.cx-14/z,p.cy-36/z,28/z,10/z);ctx.fillStyle='#cfd8de';ctx.font=`${8/z}px "JetBrains Mono",monospace`;ctx.textAlign='center';ctx.fillText(`${p.b.civ}·${p.b.mil}·${p.b.drone}`,p.cx,p.cy-31/z);}}
+  // ПВО
+  for(const a of ads){if(!adVisible(a))continue;const T=ADT[a.type],mine=a.owner===player;const col=mine?'90,180,255':atWar(player,a.owner)?'255,95,80':'200,200,200';
+    if(ui.showAD){ctx.beginPath();ctx.arc(a.x,a.y,T.range,0,7);ctx.fillStyle=`rgba(${col},${T.ew?.05:.035})`;ctx.fill();ctx.setLineDash(T.ew?[2/z,3/z]:[6/z,4/z]);ctx.strokeStyle=`rgba(${col},.45)`;ctx.lineWidth=1/z;ctx.stroke();ctx.setLineDash([]);}
+    const s=6/z;ctx.fillStyle=`rgb(${col})`;ctx.strokeStyle='#0b0f13';ctx.lineWidth=1/z;ctx.beginPath();
+    if(T.ew){ctx.rect(a.x-s*.7,a.y-s*.7,s*1.4,s*1.4);}else{ctx.moveTo(a.x-s,a.y+s*.6);ctx.arc(a.x,a.y+s*.6,s,Math.PI,0);ctx.closePath();}
+    ctx.globalAlpha=a.ready>0?.4:1;ctx.fill();ctx.stroke();ctx.globalAlpha=1;
+    if(z>1.1){ctx.font=`${8/z}px "JetBrains Mono",monospace`;ctx.textAlign='center';ctx.textBaseline='top';ctx.fillStyle='#fff';ctx.fillText(T.s+(T.ew?'':' '+a.ammo),a.x,a.y+s*.8);}}
+  // войска
+  for(const p of provs){const ks=Object.keys(p.armies).map(Number).filter(o=>tot(p.armies[o])>.02);if(!ks.length)continue;
+    const show=o=>o===player||!ui.fog||p.vis;let i=0;const vis=ks.filter(show);
+    vis.forEach(o=>{drawUnitIcon(p.cx+(i-(vis.length-1)/2)*28/z,p.cy+4/z,p.armies[o],C[o].color,z);i++;});
+    if(p.battle&&(p.vis||!ui.fog)){const t=performance.now()/200;ctx.font=`${16/z}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.globalAlpha=.6+.4*Math.sin(t);ctx.fillText('⚔',p.cx,p.cy-34/z+ (p.b.mil+p.b.drone+p.b.civ?-10/z:0));ctx.globalAlpha=1;}}
+  for(const m of moves){if(m.owner!==player&&ui.fog&&!(provs[m.path[m.i]].vis))continue;const a=provs[m.path[m.i]],b=provs[m.path[m.i+1]];if(!b)continue;const f=1-m.left/m.hop;
+    const x=a.cx+(b.cx-a.cx)*f,y=a.cy+(b.cy-a.cy)*f;ctx.strokeStyle=C[m.owner].color;ctx.lineWidth=3/z;ctx.setLineDash([6/z,4/z]);ctx.beginPath();ctx.moveTo(x,y);
+    for(let j=m.i+1;j<m.path.length;j++)ctx.lineTo(provs[m.path[j]].cx,provs[m.path[j]].cy);ctx.stroke();ctx.setLineDash([]);drawUnitIcon(x,y,m.u,C[m.owner].color,z*1.15);}
+  // летящие цели
+  for(const p of projs){if(p.delay>0)continue;const mine=p.owner===player;if(!mine&&!visibleToPlayer(p.x,p.y))continue;
+    const cls=WPN[p.w].cls,col=mine?'#7fd3ff':atWar(player,p.owner)?'#ff5b4d':'#c9c9c9';
+    const L={small:5,drone:9,uav:10,cruise:16,ballistic:26}[cls]/z;ctx.strokeStyle=col;ctx.lineWidth=(cls==='ballistic'?2.4:1.2)/z;ctx.globalAlpha=.55;
+    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-Math.cos(p.hd)*L*2.2,p.y-Math.sin(p.hd)*L*2.2);ctx.stroke();ctx.globalAlpha=1;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.hd);ctx.fillStyle=col;ctx.beginPath();const s=(cls==='small'?2.2:cls==='uav'?4.5:3.6)/z;
+    if(cls==='drone'){ctx.moveTo(s*1.4,0);ctx.lineTo(-s,s*1.3);ctx.lineTo(-s*.5,0);ctx.lineTo(-s,-s*1.3);}
+    else if(cls==='uav'){ctx.moveTo(s*1.2,0);ctx.lineTo(-s*.2,s*1.8);ctx.lineTo(-s*.2,-s*1.8);ctx.closePath();ctx.moveTo(-s*.4,0);ctx.lineTo(-s*1.2,s*.6);ctx.lineTo(-s*1.2,-s*.6);}
+    else if(cls==='small'){ctx.arc(0,0,s,0,7);}else{ctx.rect(-s*1.6,-s*.45,s*3.2,s*.9);}
+    ctx.closePath();ctx.fill();ctx.restore();
+    if(p.n>1&&z>.8){ctx.font=`${8/z}px "JetBrains Mono",monospace`;ctx.fillStyle=col;ctx.textAlign='left';ctx.fillText('×'+p.n,p.x+4/z,p.y-4/z);}}
+  for(const it of ints){if(it.owner!==player&&!visibleToPlayer(it.x,it.y))continue;ctx.strokeStyle='rgba(255,255,255,.75)';ctx.lineWidth=1/z;ctx.beginPath();
+    if(it.tr.length>=2){ctx.moveTo(it.tr[0],it.tr[1]);for(let j=2;j<it.tr.length;j+=2)ctx.lineTo(it.tr[j],it.tr[j+1]);}else ctx.moveTo(it.x,it.y);ctx.lineTo(it.x,it.y);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(it.x,it.y,1.5/z,0,7);ctx.fill();}
+  // эффекты
+  for(const f of fx){f.t+=rdt;const k=f.t/f.max;if(f.gun){if(visibleToPlayer(f.x,f.y)){ctx.strokeStyle=`rgba(255,220,120,${1-k})`;ctx.lineWidth=.8/z;ctx.setLineDash([2/z,3/z]);ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(f.x2,f.y2);ctx.stroke();ctx.setLineDash([]);}continue;}
+    if(!visibleToPlayer(f.x,f.y))continue;const r=f.r*(.4+k*1.2);const g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,r);
+    g.addColorStop(0,`rgba(255,255,230,${.9*(1-k)})`);g.addColorStop(.35,hexA(f.col,.75*(1-k)));g.addColorStop(1,hexA(f.col,0));ctx.fillStyle=g;ctx.beginPath();ctx.arc(f.x,f.y,r,0,7);ctx.fill();}
+  fx=fx.filter(f=>f.t<f.max);
+  // режимы наведения
+  if(ui.mode==='target'&&ui.wk){const [wx,wy]=toWorld(ui.mx,ui.my);const Wp=WPN[ui.wk];let site=null,ok=true;
+    if(Wp.range==='front'){const pi=provAt(wx,wy);site=pi>=0?frontSite(player,pi):null;ok=!!site;}
+    else{site=nearestOwn(player,wx,wy);if(site){ok=hyp(site.cx-wx,site.cy-wy)<=Wp.range;ctx.beginPath();ctx.arc(site.cx,site.cy,Wp.range,0,7);ctx.strokeStyle='rgba(240,205,115,.6)';ctx.lineWidth=1.4/z;ctx.setLineDash([8/z,5/z]);ctx.stroke();ctx.setLineDash([]);}}
+    if(site){ctx.strokeStyle=ok?'#f0cd73':'#e5534b';ctx.lineWidth=1.5/z;ctx.beginPath();ctx.moveTo(site.cx,site.cy);ctx.lineTo(wx,wy);ctx.stroke();}
+    ctx.strokeStyle=ok?'#f0cd73':'#e5534b';ctx.lineWidth=1.5/z;ctx.beginPath();ctx.arc(wx,wy,10/z,0,7);ctx.moveTo(wx-16/z,wy);ctx.lineTo(wx+16/z,wy);ctx.moveTo(wx,wy-16/z);ctx.lineTo(wx,wy+16/z);ctx.stroke();}
+}
+function star(x,y,r){for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.45:r*1.25;i?ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr):ctx.moveTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr);}ctx.closePath();}
+function hexA(h,a){const [r,g,b]=hexRGB(h);return `rgba(${r},${g},${b},${a})`;}
+
+/* =================== ПАНЕЛЬ =================== */
+const pc=$('#pc');
+function renderPanel(){if(player<0)return;const f={prov:tabProv,prod:tabProd,ars:tabArs,army:tabArmy,dip:tabDip,log:tabLog}[ui.tab];
+  const st=pc.scrollTop;pc.innerHTML=f();pc.scrollTop=st;panelDirty=false;}
+function armyLine(a){return `<div class="unitbox"><span>МСБ ${fN(a.inf)}</span><span>ТБ ${fN(a.tank)}</span><span>АДН ${fN(a.art)}</span></div>`;}
+function tabProv(){const p=provs[ui.sel];
+  if(!p)return `<div class="hint">Нажмите на провинцию на карте, чтобы увидеть её экономику, войска и ПВО. Колесо мыши — масштаб, перетаскивание — перемещение карты.</div>${quickStart()}`;
+  const c=C[p.owner],own=p.owner===player,seen=own||p.vis||!ui.fog;
+  let h=`<div class="ph"><span class="sw" style="background:${c.color}"></span><div style="min-width:0"><h2>${p.capital?'★ ':''}${esc(p.name)}</h2><div class="muted">${esc(c.name)}${p.core!==p.owner?` · занята, ранее «${esc(C[p.core].name)}»`:''}${atWar(player,p.owner)?' · <span class="tag war">война</span>':''}</div></div></div>`;
+  h+=`<div class="kv"><span>Рельеф</span><b>${TERR[p.terrain].n}, оборона ×${TERR[p.terrain].def}</b><span>Население</span><b>${p.pop.toFixed(2)} млн</b>`;
+  if(seen)h+=`<span>Энергосистема и инфраструктура</span><b style="color:${p.dmg>.3?'var(--red)':'inherit'}">${Math.round((1-p.dmg)*100)}%</b><span>Укрепления</span><b>${p.fort} / 3</b><span>Доход</span><b>${fM(provIncome(p))}/сут.</b>`;
+  h+='</div>';
+  if(seen){h+=`<h3>Предприятия <span>${usedSlots(p)} / ${slots(p)} площадок</span></h3><div class="kv"><span>Гражданские заводы</span><b>${p.b.civ}</b><span>Военные заводы</span><b>${p.b.mil}</b><span>Заводы БПЛА</span><b>${p.b.drone}</b></div>`;}
+  if(own){if(p.build){const B=BUILD[p.build.t];h+=`<div class="hint" style="border-style:solid">Строится: <b>${B.n}</b>, осталось ${Math.ceil(p.build.left/24)} сут.<div class="bar"><i style="width:${(1-p.build.left/p.build.total)*100}%"></i></div></div>`;}
+    h+=`<h3>Строительство</h3>`;for(const t in BUILD){const B=BUILD[t];const dis=!!p.build||(t==='fort'?p.fort>=3:usedSlots(p)>=slots(p))||C[player].money<B.cost;
+      h+=`<div class="row"><div class="nm"><b>${B.n}</b><small>${B.d} · ${B.h/24} сут.</small></div><button class="btn" data-act="build" data-k="${t}" ${dis?'disabled':''}>${fM(B.cost)}</button></div>`;}
+    h+=`<div style="margin-top:8px"><button class="btn" data-act="rally">${C[player].rally===p.id?'✓ Точка сбора новых войск':'Сделать точкой сбора'}</button></div>`;}
+  // войска
+  const ks=Object.keys(p.armies).map(Number).filter(o=>tot(p.armies[o])>.02);
+  h+=`<h3>Войска${p.battle?' <span class="tag war">идёт бой</span>':''}</h3>`;
+  if(!seen&&!p.armies[player])h+=`<div class="muted">Нет разведданных. Отправьте разведывательный БПЛА.</div>`;
+  else if(!ks.length)h+=`<div class="muted">Войск нет.</div>`;
+  else for(const o of ks){h+=`<div class="row"><span class="sw" style="height:22px;width:8px;background:${C[o].color}"></span><div class="nm"><b>${esc(C[o].name)}</b>${armyLine(p.armies[o])}</div></div>`;}
+  if(p.armies[player]&&tot(p.armies[player])>.02){h+=`<h3>Приказ войскам</h3><div class="chips" style="margin-bottom:8px">${[[1,'Все'],[.75,'75%'],[.5,'50%'],[.25,'25%']].map(([v,l])=>`<span class="chip ${ui.frac===v?'on':''}" data-act="frac" data-k="${v}">${l}</span>`).join('')}</div>
+    <button class="btn pri" data-act="moveMode">Выбрать цель движения</button><div class="hint">Или щёлкните правой кнопкой по провинции: своя — передислокация, вражеская соседняя — наступление.</div>`;}
+  // ПВО
+  const pa=ads.filter(a=>a.prov===p.id&&adVisible(a));
+  if(pa.length||own){h+=`<h3>ПВО и РЭБ</h3>`;if(!pa.length)h+=`<div class="muted">Провинция не прикрыта.</div>`;
+    for(const a of pa){const T=ADT[a.type];h+=`<div class="row"><div class="nm"><b>${T.n}</b><small>${a.owner===player?(a.ready>0?`развёртывание: ${Math.ceil(a.ready)} ч`:T.ew?'работает':`ракет: ${a.ammo}/${T.mag}`):esc(C[a.owner].name)+((a.spot[player]||0)>time?' · засечён по излучению':'')}</small></div>${a.owner===player?`<button class="btn" data-act="undeploy" data-k="${a.id}">Свернуть</button>`:''}</div>`;}}
+  if(atWar(player,p.owner)||ks.some(o=>atWar(player,o)))h+=`<div style="margin-top:12px"><button class="btn pri" data-act="strikeHere">Нанести удар по провинции</button></div>`;
+  return h;}
+function quickStart(){return `<h3>Как воевать</h3><div class="kv" style="grid-template-columns:1fr"><span>1. «Заводы» — заказывайте технику, ПВО, ракеты и дроны. Больше заводов — больше линий производства.</span><span>2. «Арсенал» — запускайте БПЛА и ракеты, разворачивайте ПВО из резерва.</span><span>3. Выберите свою провинцию с войсками и щёлкните ПКМ по соседней вражеской — начнётся наступление.</span><span>4. Разведывательный БПЛА снимает туман войны: без разведки результаты ударов не подтверждаются.</span></div>`;}
+function qtyChips(arr,key,cur){return `<div class="chips">${arr.map(v=>`<span class="chip ${cur===v?'on':''}" data-act="${key}" data-k="${v}">${v==='all'?'Все':'×'+v}</span>`).join('')}</div>`;}
+function tabProd(){const c=C[player];
+  let h=`<div class="kv"><span>Линии военных заводов</span><b>${c.lines.mil.toFixed(1)}</b><span>Линии заводов БПЛА</span><b>${c.lines.drone.toFixed(1)}</b><span>Доход / содержание</span><b>${fM(income(c))} / ${fM(upkeep(c))}</b></div>
+  <h3>Количество в заказе</h3>${qtyChips([1,5,10,25,50],'qty',ui.qty)}
+  <div class="hint">«Заказать» — на своих заводах (время зависит от числа линий). «Импорт» — +60% к цене, поставка через 7 суток, заводы не нужны.</div>`;
+  const sect=(title,keys)=>{let s=`<h3>${title}</h3>`;for(const k of keys){const it=CAT[k],cost=costOf(c,k);
+    s+=`<div class="row"><div class="nm"><b>${it.n}</b><small>${it.d} · ${it.h>=24?fN(it.h/24)+' сут.':it.h+' ч'}/ед. · ${it.fac==='drone'?'завод БПЛА':'военный завод'}</small></div>
+    <button class="btn" data-act="order" data-k="${k}" ${c.money<cost*ui.qty?'disabled':''}>${fM(cost*ui.qty)}</button>${it.imp?`<button class="btn" data-act="import" data-k="${k}" title="Импорт" ${c.money<cost*ui.qty*1.6?'disabled':''}>Импорт</button>`:''}</div>`;}return s;};
+  h+=sect('Сухопутные войска',Object.keys(GROUND))+sect('ПВО и РЭБ',Object.keys(ADT))+sect('БПЛА',['recon','fpv','fpvf','lancet','shahed','male'])+sect('Ракеты',['cruise','ballistic']);
+  h+=`<h3>Очередь <span>${c.queue.length}</span></h3>`;if(!c.queue.length)h+=`<div class="muted">Пусто.</div>`;
+  c.queue.forEach((q,i)=>{const it=CAT[q.k];const pr=q.imp?1-(q.eta-time)/(24*7):(q.qty-q.left+q.prog/it.h)/q.qty;
+    h+=`<div class="row"><div class="nm"><b>${it.n} ${q.imp?'(импорт)':''}</b><small>${q.imp?`прибудет через ${Math.ceil((q.eta-time)/24)} сут.`:`готово ${q.qty-q.left} из ${q.qty}`}</small><div class="bar"><i style="width:${clamp(pr,0,1)*100}%"></i></div></div>${q.imp?'':`<button class="btn dng" data-act="cancel" data-k="${i}">Отмена</button>`}</div>`;});
+  return h;}
+function tabArs(){const c=C[player];
+  let h=`<h3>Залп</h3>${qtyChips([1,3,5,10,25,'all'],'salvo',ui.salvo)}<h3>Цель удара</h3><div class="chips">${Object.keys(PRIO).map(k=>`<span class="chip ${ui.prio===k?'on':''}" data-act="prio" data-k="${k}">${PRIO[k]}</span>`).join('')}</div>
+  ${ui.pending!=null?`<div class="hint" style="border-color:var(--acc)">Цель: <b>${esc(provs[ui.pending].name)}</b>. Нажмите «Пуск» у нужного средства. <button class="btn" data-act="clearPending">Сбросить</button></div>`:''}
+  <h3>Склад ударных средств</h3>`;
+  for(const k in WPN){const Wp=WPN[k],n=c.stock[k]|0;
+    h+=`<div class="row"><div class="nm"><b>${Wp.n}</b><small>${Wp.range==='front'?'линия фронта':Wp.range+' км'} · ${Wp.spd} км/ч · ${Wp.d}</small></div><span class="num" style="min-width:34px;text-align:right">${n}</span><button class="btn pri" data-act="launch" data-k="${k}" ${n?'':'disabled'}>Пуск</button></div>`;}
+  const fl=projs.filter(p=>p.owner===player);if(fl.length)h+=`<div class="hint">В воздухе: ${fl.reduce((s,p)=>s+p.n,0)} ваших ракет и БПЛА.</div>`;
+  h+=`<h3>Резерв ПВО — развернуть</h3>`;const rk=Object.keys(c.adRes).filter(k=>c.adRes[k]>0);
+  if(!rk.length)h+=`<div class="muted">Резерв пуст. Закажите комплексы во вкладке «Заводы».</div>`;
+  for(const k of rk)h+=`<div class="row"><div class="nm"><b>${ADT[k].n}</b><small>${ADT[k].d}</small></div><span class="num">${c.adRes[k]}</span><button class="btn pri" data-act="deploy" data-k="${k}">Развернуть</button></div>`;
+  h+=`<h3>Доктрина ПВО</h3>
+  <label class="row" style="cursor:pointer"><input type="checkbox" id="d1" data-act="doct" data-k="lrNoDrones" ${c.doct.lrNoDrones?'checked':''}><div class="nm"><b>ЗРК БД не стреляют по дронам</b><small>Ракета ЗРК БД стоит ${fM(ADT.lrsam.shot)}, ударный БПЛА — ${fM(WPN.shahed.cost)}</small></div></label>
+  <label class="row" style="cursor:pointer"><input type="checkbox" id="d2" data-act="doct" data-k="mrNoSmall" ${c.doct.mrNoSmall?'checked':''}><div class="nm"><b>ЗРК СД не стреляют по FPV и барражирующим</b><small>Экономит ракеты для крылатых ракет и авиации</small></div></label>`;
+  const my=ads.filter(a=>a.owner===player);const by={};for(const a of my)by[a.type]=(by[a.type]||0)+1;
+  h+=`<h3>Развёрнуто</h3><div class="kv">${Object.keys(ADT).map(k=>`<span>${ADT[k].n}</span><b>${by[k]||0}</b>`).join('')}</div>
+  <div class="kv" style="margin-top:8px"><span>Зенитных пусков</span><b>${c.st.shots}</b><span>Сбито целей</span><b>${c.st.intercepted}</b><span>Потеряно своих БПЛА и ракет</span><b>${c.st.lost}</b></div>`;
+  return h;}
+function tabArmy(){const c=C[player];let t={inf:0,tank:0,art:0};const list=[];
+  for(const p of provs){const a=p.armies[player];if(a&&tot(a)>.02){t.inf+=a.inf;t.tank+=a.tank;t.art+=a.art;list.push(p);}}
+  let h=`<h3>Всего</h3>${armyLine(t)}<div class="kv" style="margin-top:8px"><span>Содержание армии и ПВО</span><b>${fM(upkeep(c))}/сут.</b><span>Точка сбора</span><b>${esc(provs[c.rally!=null&&provs[c.rally].owner===player?c.rally:c.capital].name)}</b></div>
+  <h3>Группировки</h3>`;
+  list.sort((a,b)=>(b.battle-a.battle)||tot(b.armies[player])-tot(a.armies[player]));
+  for(const p of list)h+=`<div class="row"><div class="nm"><b>${esc(p.name)} ${p.battle?'<span class="tag war">бой</span>':''}${p.owner!==player?' <span class="muted">(чужая территория)</span>':''}</b>${armyLine(p.armies[player])}</div><button class="btn" data-act="goto" data-k="${p.id}">Показать</button></div>`;
+  const mv=moves.filter(m=>m.owner===player);if(mv.length){h+=`<h3>На марше</h3>`;for(const m of mv)h+=`<div class="row"><div class="nm"><b>→ ${esc(provs[m.path[m.path.length-1]].name)}</b>${armyLine(m.u)}</div><span class="num muted">${Math.ceil(m.left)} ч</span></div>`;}
+  return h;}
+function tabDip(){let h=`<div class="hint">Сила — грубая оценка армии, ПВО и экономики. Мир возможен, если противник проигрывает или устал от войны.</div>`;const ps=strength(C[player]);
+  for(const c of C){if(c.id===player)continue;const n=myProvs(c.id).length;const war=atWar(player,c.id);
+    h+=`<div class="row"><span class="sw" style="background:${c.color};height:34px;width:8px"></span><div class="nm"><b>${esc(c.name)} ${!c.alive?'<span class="tag dead">капитулировала</span>':war?'<span class="tag war">война</span>':'<span class="tag peace">мир</span>'}</b>
+    <small>${c.trait}${c.alive?` · провинций ${n} · сила ${(strength(c)/ps*100).toFixed(0)}% от вашей`:''}${c.alive&&c.wars.size?` · воюет с: ${[...c.wars].map(i=>esc(C[i].name)).join(', ')}`:''}</small></div>
+    ${c.alive?(war?(c.peaceOffer?`<button class="btn pri" data-act="acceptPeace" data-k="${c.id}">Принять мир</button>`:`<button class="btn" data-act="peace" data-k="${c.id}">Предложить мир</button>`):`<button class="btn dng" data-act="war" data-k="${c.id}">Объявить войну</button>`):''}</div>`;}
+  return h;}
+function tabLog(){if(!logs.length)return `<div class="muted">Событий пока нет.</div>`;return logs.slice(0,150).map(l=>`<div class="log ${l.cls}"><time>${dateStr(l.t)}</time>${esc(l.txt)}</div>`).join('');}
+
+pc.addEventListener('pointerdown',()=>{ui.mouseDown=true;});
+window.addEventListener('pointerup',()=>{ui.mouseDown=false;});
+pc.addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(!el)return;act(el.dataset.act,el.dataset.k,el);});
+function act(a,k,el){const c=C[player];let err=null;
+  switch(a){
+  case 'build':err=startBuild(c,provs[ui.sel],k);if(!err)toast(`Начато строительство: ${BUILD[k].n}`,'ok');break;
+  case 'rally':c.rally=ui.sel;toast('Новые войска будут прибывать сюда','ok');break;
+  case 'frac':ui.frac=+k;break;
+  case 'moveMode':setMode('move');break;
+  case 'undeploy':{const ad=ads.find(x=>x.id===+k);if(ad){ads=ads.filter(x=>x!==ad);c.adRes[ad.type]=(c.adRes[ad.type]||0)+1;toast(`${ADT[ad.type].n} свёрнут в резерв`);}break;}
+  case 'strikeHere':ui.pending=ui.sel;setTab('ars');return;
+  case 'clearPending':ui.pending=null;break;
+  case 'qty':ui.qty=+k;break;
+  case 'order':case 'import':err=order(c,k,ui.qty,a==='import');if(!err)toast(`${a==='import'?'Импорт':'Заказ'}: ${CAT[k].n} ×${ui.qty}`,'ok');break;
+  case 'cancel':{const q=c.queue[+k];if(q){c.money+=q.paid*(q.left/q.qty);c.queue.splice(+k,1);toast('Заказ отменён, средства за невыпущенные единицы возвращены');}break;}
+  case 'salvo':ui.salvo=k==='all'?'all':+k;break;
+  case 'prio':ui.prio=k;break;
+  case 'launch':if(ui.pending!=null){const p=provs[ui.pending];err=tryLaunch(k,p.cx+R(-6,6),p.cy+R(-6,6));if(!err)toast(`Пуск: ${WPN[k].n}`,'ok');}else{ui.wk=k;setMode('target');}break;
+  case 'deploy':ui.adk=k;setMode('deploy');break;
+  case 'doct':c.doct[k]=el.checked;return;
+  case 'war':declareWar(player,+k);break;
+  case 'peace':{const [ok,why]=aiPeaceAnswer(C[+k],c);if(ok)makePeace(player,+k);else toast(why,'bad');break;}
+  case 'acceptPeace':makePeace(player,+k);break;
+  case 'goto':ui.sel=+k;focus(provs[+k].cx,provs[+k].cy,Math.max(cam.z,1.2));setTab('prov');return;
+  case 'closeOver':$('#over').style.display='none';running=true;setSpeedUI();return;
+  case 'toMenu':$('#over').style.display='none';openMenu();return;
+  }
+  if(err)toast(err,'bad');renderPanel();}
+function setTab(t){ui.tab=t;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));renderPanel();}
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+function setMode(m){ui.mode=m;const el=$('#mode');
+  if(!m){el.style.display='none';cv.style.cursor='grab';return;}
+  el.style.display='block';cv.style.cursor='crosshair';
+  el.textContent=m==='target'?`Наведение: ${WPN[ui.wk].n}, залп ${ui.salvo==='all'?'всеми':'×'+ui.salvo}, цель — ${PRIO[ui.prio].toLowerCase()}. ЛКМ — пуск, Esc — отмена`
+    :m==='deploy'?`Развёртывание: ${ADT[ui.adk].n}. Щёлкните по своей территории (Esc — отмена)`:`Выберите провинцию назначения (Esc — отмена)`;}
+function tryLaunch(wk,x,y){const c=C[player],Wp=WPN[wk];const pi=provAt(x,y);if(pi<0)return 'Цель в море. Выберите точку на суше.';
+  const p=provs[pi];const hostile=atWar(player,p.owner)||Object.keys(p.armies).some(o=>atWar(player,+o)&&tot(p.armies[o])>.01);
+  if(!hostile)return p.owner===player?'Это ваша территория, противника здесь нет.':`С государством «${C[p.owner].name}» нет войны.`;
+  let site;if(Wp.range==='front'){site=frontSite(player,pi);if(!site)return 'FPV применяются только на линии фронта: цель должна граничить с провинцией, где стоят ваши войска.';}
+  else{site=nearestOwn(player,x,y);if(!site||hyp(site.cx-x,site.cy-y)>Wp.range)return `Цель вне радиуса (${Wp.range} км от ближайшей своей провинции).`;}
+  const have=c.stock[wk]|0;const n=Math.min(ui.salvo==='all'?have:ui.salvo,have);if(n<=0)return 'Нет на складе.';
+  c.stock[wk]-=n;fireSalvo(player,wk,site,x,y,n,ui.prio);panelDirty=true;return null;}
+
+/* =================== ВВОД =================== */
+const ptrs=new Map();let drag=null,pinch=null;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch={d:hyp(a.x-b.x,a.y-b.y),z:cam.z};drag=null;return;}
+  drag={sx:e.offsetX,sy:e.offsetY,cx:cam.x,cy:cam.y,moved:false,btn:e.button};});
+cv.addEventListener('pointermove',e=>{ui.mx=e.offsetX;ui.my=e.offsetY;if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+  if(pinch&&ptrs.size===2){const [a,b]=[...ptrs.values()];const d=hyp(a.x-b.x,a.y-b.y);const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;const [wx,wy]=toWorld(mx,my);
+    cam.z=clamp(pinch.z*d/pinch.d,.3,5);cam.x=wx-mx/cam.z;cam.y=wy-my/cam.z;return;}
+  if(drag){const dx=e.offsetX-drag.sx,dy=e.offsetY-drag.sy;if(Math.abs(dx)+Math.abs(dy)>5)drag.moved=true;if(drag.moved){cam.x=drag.cx-dx/cam.z;cam.y=drag.cy-dy/cam.z;cv.style.cursor='grabbing';}}
+  const [wx,wy]=toWorld(e.offsetX,e.offsetY);const pi=provAt(wx,wy);ui.hover=pi>=0?pi:null;tip(e.offsetX,e.offsetY,pi);});
+cv.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);if(pinch){if(ptrs.size<2)pinch=null;drag=null;return;}
+  if(drag&&!drag.moved){const [wx,wy]=toWorld(e.offsetX,e.offsetY);mapClick(wx,wy,drag.btn);}drag=null;cv.style.cursor=ui.mode?'crosshair':'grab';});
+cv.addEventListener('pointerleave',()=>{$('#tip').style.display='none';ui.hover=null;});
+cv.addEventListener('wheel',e=>{e.preventDefault();const [wx,wy]=toWorld(e.offsetX,e.offsetY);cam.z=clamp(cam.z*Math.exp(-e.deltaY*.0012),.3,5);cam.x=wx-e.offsetX/cam.z;cam.y=wy-e.offsetY/cam.z;},{passive:false});
+function mapClick(wx,wy,btn){
+  if(!started){const pi=provAt(wx,wy);if(pi>=0){ui.menuSel=provs[pi].owner;renderMenu();}return;}
+  const pi=provAt(wx,wy);
+  if(ui.mode==='target'){if(btn===2){setMode(null);return;}const err=tryLaunch(ui.wk,wx,wy);if(err)toast(err,'bad');else{toast(`Пуск: ${WPN[ui.wk].n}`,'ok');if(!(C[player].stock[ui.wk]>0))setMode(null);}return;}
+  if(ui.mode==='deploy'){if(btn===2){setMode(null);return;}if(pi<0||provs[pi].owner!==player){toast('Развернуть комплекс можно только на своей территории.','bad');return;}
+    const c=C[player];addAD(player,ui.adk,provs[pi],6,wx,wy);c.adRes[ui.adk]--;toast(`${ADT[ui.adk].n}: развёртывание 6 ч`,'ok');if(!(c.adRes[ui.adk]>0))setMode(null);renderPanel();return;}
+  if(ui.mode==='move'||btn===2){if(ui.sel!=null&&pi>=0&&pi!==ui.sel){const err=sendArmy(player,ui.sel,pi,ui.frac);if(err)toast(err,'bad');else toast(`Войска выдвигаются: ${provs[pi].name}`,'ok');}setMode(null);renderPanel();return;}
+  ui.sel=pi>=0?pi:null;if(ui.tab!=='prov')setTab('prov');else renderPanel();}
+function tip(x,y,pi){const el=$('#tip');if(pi<0||pi==null||ui.mode){el.style.display='none';return;}const p=provs[pi],c=C[p.owner];
+  let h=`<b>${esc(p.name)}</b>${p.capital?' ★':''}<br>${esc(c.name)}<br><span class="muted">${TERR[p.terrain].n}, ${p.pop.toFixed(2)} млн чел.</span>`;
+  if(p.owner===player||p.vis||!ui.fog){const a=p.armies[p.owner];if(a&&tot(a)>.02)h+=`<br>Гарнизон: ${fN(tot(a))} бат.`;h+=`<br>Заводы: гражд. ${p.b.civ} · воен. ${p.b.mil} · БПЛА ${p.b.drone}`;}
+  else h+=`<br><span class="muted">Нет разведданных</span>`;
+  el.innerHTML=h;el.style.display='block';const r=$('#mapwrap').getBoundingClientRect();el.style.left=Math.min(x+14,r.width-270)+'px';el.style.top=Math.min(y+14,r.height-120)+'px';}
+window.addEventListener('keydown',e=>{if(!started||e.target.tagName==='INPUT')return;
+  if(e.code==='Space'){e.preventDefault();running=!running;setSpeedUI();}
+  else if(e.key==='Escape')setMode(null);
+  else if(/^[1-5]$/.test(e.key)){speed=SPEEDS[+e.key-1];running=true;setSpeedUI();}});
+
+/* =================== ВЕРХНЯЯ ПАНЕЛЬ =================== */
+const SPEEDS=[1,2,5,10,24];
+function setSpeedUI(){$('#speed').innerHTML=`<button data-s="0" class="${!running?'on':''}" title="Пауза (пробел)">❚❚</button>`+SPEEDS.map(s=>`<button data-s="${s}" class="${running&&speed===s?'on':''}">${s}ч/с</button>`).join('');}
+$('#speed').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||!started||over)return;const s=+b.dataset.s;if(!s)running=false;else{speed=s;running=true;}setSpeedUI();});
+$('#tgAD').onclick=e=>{ui.showAD=!ui.showAD;e.target.classList.toggle('on',ui.showAD);};
+$('#tgFog').onclick=e=>{ui.fog=!ui.fog;e.target.classList.toggle('on',ui.fog);};
+$('#btnHelp').onclick=()=>{running=false;setSpeedUI();showOver(HELP);};
+$('#btnMenu').onclick=()=>{showOver(`<h2>Меню</h2><p>Начать новую партию? Текущая игра будет потеряна.</p><div style="display:flex;gap:8px"><button class="btn" data-act="closeOver">Вернуться к игре</button><button class="btn dng" data-act="toMenu">Новая партия</button></div>`);running=false;setSpeedUI();};
+$('#over').addEventListener('click',e=>{const el=e.target.closest('[data-act]');if(el)act(el.dataset.act,el.dataset.k,el);});
+function showOver(html){$('#overBox').innerHTML=html;$('#over').style.display='flex';}
+const HELP=`<h2>Справка штаба</h2>
+<p><b>Экономика.</b> Доход дают население провинций и гражданские заводы; энергетические удары противника снижают доход и выпуск. Армия и ПВО требуют содержания, а каждая зенитная ракета пополняется за деньги.</p>
+<p><b>Производство.</b> Военный завод даёт 2 линии (техника, ПВО, ракеты), завод БПЛА — 3 линии. Несколько заказов идут параллельно, пока хватает линий. Импорт дороже на 60%, зато без заводов.</p>
+<p><b>Удары.</b> Выберите в «Арсенале» залп и цель (войска, ПВО, заводы, энергетика), нажмите «Пуск» и щёлкните по карте. FPV работают только по линии фронта. Рой дешёвых ударных БПЛА перегружает ПВО и заставляет врага тратить дорогие ракеты; крылатые ракеты идут на малой высоте, и радар видит их поздно; баллистику сбивают только ЗРК СД и БД.</p>
+<p><b>ПВО.</b> Каждый комплекс имеет дальность, боекомплект, время перезарядки и вероятность поражения по каждому классу целей. По маловысотным целям ЗРК СД и БД работают на 50% и 33% своей дальности. РЭБ глушит FPV и ударные БПЛА, но бессильна против оптоволоконных дронов и ракет. Комплекс, который ведёт огонь, засвечивается для противника на сутки.</p>
+<p><b>Сухопутные войска.</b> Выберите свою провинцию и щёлкните ПКМ по цели. Оборону усиливают рельеф (лес ×1.25, горы ×1.6) и укрепления. Потеря столицы и большей части территории ведёт к капитуляции.</p>
+<p><b>Управление.</b> <kbd>Пробел</kbd> — пауза, <kbd>1</kbd>–<kbd>5</kbd> — скорость, <kbd>Esc</kbd> — отмена режима, колесо — масштаб, перетаскивание — карта.</p>
+<button class="btn pri" data-act="closeOver">Продолжить</button>`;
+function topTick(){if(player<0)return;const c=C[player];$('#money').textContent=fM(c.money);const net=income(c)-upkeep(c);
+  const el=$('#inc');el.textContent=(net>=0?'+':'')+fM(net);el.style.color=net>=0?'var(--grn)':'var(--red)';$('#date').textContent=dateStr(time);}
+
+/* =================== МЕНЮ =================== */
+function renderMenu(){const box=$('#nations');box.innerHTML=C.map(c=>{const n=myProvs(c.id).length;return `<button class="nat ${ui.menuSel===c.id?'on':''}" data-c="${c.id}"><span class="sw" style="background:${c.color}"></span><span><b>${esc(c.name)}</b><small>${c.trait}</small><small>Провинций: ${n} · столица ${esc(provs[c.capital].name)}</small></span></button>`;}).join('');
+  $('#selInfo').textContent='Выбрано: '+C[ui.menuSel].name;ui.sel=C[ui.menuSel].capital;}
+$('#nations').addEventListener('click',e=>{const b=e.target.closest('.nat');if(!b)return;ui.menuSel=+b.dataset.c;renderMenu();});
+for(const id of ['scen','diff'])$('#'+id).addEventListener('click',e=>{const ch=e.target.closest('.chip');if(!ch)return;$('#'+id).querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===ch));if(id==='scen')ui.scen=ch.dataset.v;else ui.diff=+ch.dataset.v;});
+$('#regen').onclick=()=>{genWorld();ui.menuSel=Math.min(ui.menuSel,C.length-1);renderMenu();fitCam();};
+$('#start').onclick=startGame;
+function openMenu(){started=false;running=false;over=false;player=-1;genWorld();ui.sel=null;ui.pending=null;setMode(null);fitCam();for(const p of provs)p.vis=true;renderMenu();$('#menu').style.display='flex';setSpeedUI();}
+function startGame(){won=false;player=ui.menuSel;aiIncome=ui.diff;C.forEach(c=>c.isPlayer=c.id===player);const c=C[player];
+  $('#menu').style.display='none';$('#cname').textContent=c.name;$('#flag').style.background=c.color;
+  started=true;running=true;over=false;speed=2;ui.sel=c.capital;ui.pending=null;ui.tab='prov';
+  updateVis();fogDirty=true;ownerDirty=true;
+  log(`Вы приняли командование: ${c.name}. Особенность: ${c.trait}.`,'ok');
+  if(ui.scen==='war'){const nbs=new Set();for(const p of myProvs(player))for(const n of p.nb)if(provs[n].owner!==player)nbs.add(provs[n].owner);
+    const e=[...nbs].sort((a,b)=>strength(C[b])-strength(C[a]))[0];if(e!=null)declareWar(e,player);}
+  const cap=provs[c.capital];focus(cap.cx,cap.cy,Math.max(.9,Math.min(VW/W,VH/H)*2.2));setSpeedUI();setTab('prov');}
+
+/* =================== ЗАПУСК =================== */
+let last=performance.now(),panelT=0;
+function frame(now){const rdt=Math.min(.1,(now-last)/1000);last=now;
+  if(running&&started&&!over){let g=rdt*speed,n=0;while(g>1e-6&&n<200){const d=Math.min(g,.02);simStep(d);g-=d;n++;}}
+  render(rdt);if(started){topTick();panelT+=rdt;if(panelDirty&&panelT>.5&&!ui.mouseDown){panelT=0;renderPanel();}}
+  requestAnimationFrame(frame);}
+window.addEventListener('resize',()=>{resize();});
+resize();openMenu();requestAnimationFrame(frame);
+</script>

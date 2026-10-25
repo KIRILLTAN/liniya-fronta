@@ -1,0 +1,12 @@
+build/
+dist/
+dl/
+saves/
+game/
+.claude/
+__pycache__/
+*.exe
+*.spec
+*.part
+build.log
+build_log.txt
