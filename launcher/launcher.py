@@ -1,4 +1,4 @@
-"""Лаунчер «Линии фронта»: скачивает последнюю версию игры с GitHub и запускает её."""
+﻿"""Лаунчер «Линии фронта»: скачивает последнюю версию игры с GitHub и запускает её."""
 import json
 import os
 import ssl
@@ -58,7 +58,7 @@ class Launcher:
         self.busy = False
         root.title(TITLE)
         root.configure(bg=BG)
-        root.geometry('560x360')
+        root.geometry('560x384')
         root.resizable(False, False)
         try:
             root.iconbitmap(resource('app.ico'))
